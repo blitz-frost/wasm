@@ -6,22 +6,22 @@ import (
 )
 
 var doc js.Value = js.Global().Get("document")
-var Root Base = *newBase(doc.Call("getElementById", "root"))
+var Root Element = Element{doc.Call("getElementById", "root")}
 
-// An Element can pass itself as a collection of DOM elements.
-type Element interface {
-	Elem() []*Base
+// A Collection can pass itself as a set of DOM elements.
+type Collection interface {
+	Elements() []Element
 }
 
 // Compose is a helper function to implement the Element interface using multiple DOM objects.
-func Compose(e ...Element) []*Base {
+func Compose(e ...Collection) []Element {
 	if len(e) == 0 {
 		return nil
 	}
 
-	r := e[0].Elem()
+	r := e[0].Elements()
 	for i := 1; i < len(e); i++ {
-		r = append(r, e[i].Elem()...)
+		r = append(r, e[i].Elements()...)
 	}
 
 	return r
@@ -29,197 +29,248 @@ func Compose(e ...Element) []*Base {
 
 // A Base represents a JS DOM element and forms the basis of this package.
 // It wraps js.Value and gives access to all its funcionality.
-type Base struct {
+type Element struct {
 	js.Value // underlying JS object
-
-	Id    StringAttr
-	Class StringAttr
 }
 
-func newBase(obj js.Value) *Base {
-	r := Base{Value: obj}
-
-	r.Id = StringAttr{&r, "id"}
-	r.Class = StringAttr{&r, "className"}
-
-	return &r
-}
-
-func (x Base) Add(e Element) {
-	for _, v := range e.Elem() {
+func (x Element) Add(c Collection) {
+	for _, v := range c.Elements() {
 		x.Value.Call("appendChild", v.Value)
 	}
 }
 
-func (x Base) Handle(event string, h Handler) {
-	x.Set(event, h.f)
+func (x Element) Handle(event string, h Handler) {
+	x.Set("on"+event, h.f)
 }
 
-// GetStyle returns the current value of the specified style component.
-func (x Base) GetStyle(name string) string {
+func (x Element) Class() string {
+	return x.Get("className").String()
+}
+
+func (x Element) ClassSet(name string) {
+	x.Set("className", name)
+}
+
+func (x Element) EditableSet(t bool) {
+	x.Set("contentEditable", t)
+}
+
+func (x Element) Focus() {
+	x.Call("focus")
+}
+
+func (x Element) Id() string {
+	return x.Get("id").String()
+}
+
+func (x Element) IdSet(id string) {
+	x.Set("id", id)
+}
+
+// Style returns the current value of the specified style component.
+func (x Element) Style(name string) string {
 	return x.Get("style").Get(name).String()
 }
 
-// SetStyle sets the value of the specified style component.
-func (x *Base) SetStyle(name, value string) {
+// StyleSet sets the value of the specified style component.
+func (x Element) StyleSet(name, value string) {
 	x.Get("style").Set(name, value)
 }
 
-// GetText returns the inner HTML text node value. Panics if x does not contain a text node.
-func (x Base) GetText() string {
+func (x Element) Sub(i int) Element {
+	return Element{(x.Get("children").Index(i))}
+}
+
+func (x Element) SubLen() int {
+	return x.Get("children").Length()
+}
+
+// Text returns the inner HTML text node value. Panics if x does not contain a text node.
+func (x Element) Text() string {
 	return x.Get("innerHTML").String()
 }
 
-// SetText sets the inner HTML of x as a text node with the provided value.
-func (x *Base) SetText(s string) {
+// TextSet sets the inner HTML of x as a text node with the provided value.
+func (x Element) TextSet(s string) {
 	x.Set("innerHTML", s)
 }
 
-func (x *Base) Elem() []*Base {
-	return []*Base{x}
+func (x Element) Elements() []Element {
+	return []Element{x}
 }
 
 type Div struct {
-	*Base
+	Element
 }
 
-func NewDiv() *Div {
-	return &Div{newBase(doc.Call("createElement", "div"))}
+func NewDiv() Div {
+	return Div{Element{doc.Call("createElement", "div")}}
 }
 
 type TextArea struct {
-	*Base
+	Element
 }
 
-func NewTextArea() *TextArea {
-	return &TextArea{newBase(doc.Call("createElement", "textarea"))}
+func AsTextArea(e Element) TextArea {
+	return TextArea{e}
+}
+
+func NewTextArea() TextArea {
+	return TextArea{Element{doc.Call("createElement", "textarea")}}
+}
+
+func (x TextArea) PlaceholderSet(s string) {
+	x.Set("placeholder", s)
+}
+
+func (x TextArea) RowsSet(n int) {
+	x.Set("rows", n)
+}
+
+func (x TextArea) Text() string {
+	return x.Get("value").String()
+}
+
+func (x TextArea) TextSet(s string) {
+	x.Set("value", s)
 }
 
 type Button struct {
-	*Base
+	Element
 }
 
-func NewButton() *Button {
-	return &Button{newBase(doc.Call("createElement", "button"))}
+func NewButton() Button {
+	return Button{Element{doc.Call("createElement", "button")}}
 }
 
 type Option struct {
-	*Base
+	Element
 }
 
-func NewOption() *Option {
-	return &Option{newBase(doc.Call("createElement", "option"))}
+func NewOption() Option {
+	return Option{Element{doc.Call("createElement", "option")}}
 }
 
-// Get returns the option's value.
-func (x Option) Get() string {
-	return x.Base.Get("value").String()
+func (x Option) Value() string {
+	return x.Element.Get("value").String()
 }
 
-// Set sets the HTML option's value and text to v.
-func (x *Option) Set(v string) {
-	x.Base.Set("value", v)
-	x.Base.Set("text", v)
+func (x Option) ValueSet(val string) {
+	x.Set("value", val)
+	x.Set("text", val)
 }
 
 type Select struct {
-	*Base
-	opts []Option
+	Element
 }
 
-func NewSelect() *Select {
-	return &Select{
-		Base: newBase(doc.Call("createElement", "select")),
-		opts: make([]Option, 0),
-	}
+func NewSelect() Select {
+	return Select{Element{doc.Call("createElement", "select")}}
 }
 
-// Set sets the currently active option.
-func (x *Select) Set(index int) {
-	x.Base.Set("selectedIndex", index)
+func AsSelect(e Element) Select {
+	return Select{e}
+}
+
+// IndexSet sets the currently active option.
+func (x Select) IndexSet(i int) {
+	x.Set("selectedIndex", i)
 }
 
 // Get returns the value of the currently selected option.
-func (x Select) Get() string {
-	return x.Base.Get("value").String()
+func (x Select) Value() string {
+	return x.Get("value").String()
+}
+
+// Set attempts to set the active selected option based on the given value.
+// If no option has that value, the active option will be empty.
+func (x Select) ValueSet(val string) {
+	x.Set("value", val)
 }
 
 // Expand inserts a new option at the end of the list and returns it.
-func (x *Select) Expand() *Option {
-	n := len(x.opts)
-	x.opts = append(x.opts, *NewOption())
-	x.Call("add", x.opts[n].Base.Value)
-	return &x.opts[n]
+func (x Select) Expand() Option {
+	r := NewOption()
+	x.Call("add", r.Element.Value)
+	return r
 }
 
-func (x *Select) Len() int {
-	return len(x.opts)
+func (x Select) Len() int {
+	return x.Element.Get("options").Length()
 }
 
 // A Cell wraps a DOM td
 type Cell struct {
-	*Base
+	Element
+}
+
+func AsCell(e Element) Cell {
+	return Cell{e}
+}
+
+func (x Cell) SpanSet(n int) {
+	x.Set("colSpan", n)
+}
+
+func (x Cell) Row() Row {
+	return Row{Element{x.Get("parentElement")}}
 }
 
 // A Row wraps a DOM tr
 type Row struct {
-	*Base
-	cells []Cell // consistent with table
+	Element
 }
 
-// Index returns the row's ith cell, starting at 0.
-func (x Row) Index(i int) *Cell {
-	return &x.cells[i]
+// Cell returns the row's i-th cell, starting at 0.
+func (x Row) Cell(i int) Cell {
+	return Cell{Element{x.Get("cells").Index(i)}}
+}
+
+// Expand inserts a new cell at the end of the row and returns it.
+func (x Row) Expand() Cell {
+	return Cell{Element{x.Call("insertCell", -1)}}
+}
+
+func (x Row) Index() int {
+	return x.Get("rowIndex").Int()
 }
 
 // Len returns the row's number of cells.
 func (x Row) Len() int {
-	return len(x.cells)
-}
-
-// Expand inserts a new cell at the end of the row and returns it.
-func (x *Row) Expand() *Cell {
-	x.cells = append(x.cells, Cell{newBase(x.Call("insertCell", -1))})
-	return &x.cells[len(x.cells)-1]
+	return x.Get("cells").Length()
 }
 
 type Table struct {
-	*Base
-	rows []Row // more convenient to store a Go slice for types that hold more than a Base
+	Element
 }
 
-func NewTable() *Table {
-	return &Table{
-		Base: newBase(doc.Call("createElement", "table")),
-		rows: make([]Row, 0),
+func AsTable(e Element) Table {
+	return Table{e}
+}
+
+func NewTable() Table {
+	return Table{Element{doc.Call("createElement", "table")}}
+}
+
+// Clear deletes all rows from the table.
+func (x Table) Clear() {
+	n := x.Len()
+	for i := 0; i < n; i++ {
+		x.Call("deleteRow", -1)
 	}
 }
 
-// Index returns the table's ith row, starting at 0.
-func (x Table) Index(i int) *Row {
-	return &x.rows[i]
+// Expand inserts a new row at the bottom of the table and returns it.
+func (x Table) Expand() Row {
+	return Row{Element{x.Call("insertRow", -1)}}
 }
 
 // Len returns the table's number of rows.
 func (x Table) Len() int {
-	return len(x.rows)
+	return x.Get("rows").Length()
 }
 
-// Expand inserts a new row at the bottom of the table and returns it.
-func (x *Table) Expand() *Row {
-	x.rows = append(x.rows, Row{
-		Base:  newBase(x.Call("insertRow", -1)),
-		cells: make([]Cell, 0),
-	})
-	return &x.rows[len(x.rows)-1]
-}
-
-// Clear deletes all rows from the table.
-func (x *Table) Clear() {
-	for i := 0; i < len(x.rows); i++ {
-		x.Base.Value.Call("deleteRow", -1)
-	}
-	if len(x.rows) > 0 {
-		x.rows = x.rows[:0]
-	}
+// Row returns the table's ith row, starting at 0.
+func (x Table) Row(i int) Row {
+	return Row{Element{x.Get("rows").Index(i)}}
 }

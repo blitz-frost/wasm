@@ -15,8 +15,8 @@ Arrays and slices use different IDs, but their values are encoded identically: o
 
 Maps start with one int for the number of key-value pairs, followed by each key and value individually encoded.
 
-Structs only process exported fields. Names are not transmitted or checked, the receiving side must use a struct type with the right field number, type and order.
-The encoded form is: one int representing the number of exported fields, followed by each field encoded individually.
+Structs must only have exported fields. Field names are not transmitted or checked, the receiving side must use a struct type with the right field number, type and order.
+The encoded form is: one int representing the number of fields, followed by each field encoded individually.
 
 No other types are currently supported. Notably, pointers and interfaces are not supported. All used types must be concrete and flat (not be or contain references).
 */
@@ -28,6 +28,11 @@ import (
 	"reflect"
 	"unsafe"
 )
+
+type T struct {
+	a int
+	b int
+}
 
 const (
 	uintSize = 4 << (^uint(0) >> 32 & 1) // 4 or 8
@@ -158,23 +163,14 @@ func (x *Encoder) EncodeValue(v reflect.Value) error {
 	case k == reflect.Struct:
 		// currently not transmitting field names
 
-		// find exported fields
-		m := v.NumField()
-		var ind []int
-		for i := 0; i < m; i++ {
-			if t.Field(i).PkgPath == "" {
-				ind = append(ind, i)
-			}
-		}
-		n := len(ind)
-
 		// write field count
+		n := v.NumField()
 		if err := x.encodeInt(n); err != nil {
 			return err
 		}
 
 		// encode each field
-		for _, i := range ind {
+		for i := 0; i < n; i++ {
 			if err := x.EncodeValue(v.Field(i)); err != nil {
 				return err
 			}
@@ -317,20 +313,11 @@ func (x *Decoder) DecodeValue(v reflect.Value) error {
 			return err
 		}
 
-		// check exported field count
-		m := v.NumField()
-		var ind []int
-		for i := 0; i < m; i++ {
-			if t.Field(i).PkgPath == "" {
-				ind = append(ind, i)
-			}
-		}
-		if n != len(ind) {
-			return errors.New("exported field count missmatch")
+		if n != v.NumField() {
+			return errors.New("field count missmatch")
 		}
 
-		// populate fields
-		for _, i := range ind {
+		for i := 0; i < n; i++ {
 			if err := x.DecodeValue(v.Field(i).Addr()); err != nil {
 				return err
 			}
