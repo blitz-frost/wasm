@@ -29,14 +29,9 @@ import (
 	"unsafe"
 )
 
-type T struct {
-	a int
-	b int
-}
+const uintSize = 4 << (^uint(0) >> 32 & 1) // 4 or 8
 
-const (
-	uintSize = 4 << (^uint(0) >> 32 & 1) // 4 or 8
-)
+var stringType reflect.Type = reflect.TypeOf("")
 
 // A size encodes counts or byte lengths.
 // It is an int type for compatibility with the built-in Go len function, but is not used for negative values.
@@ -135,7 +130,7 @@ func (x *Encoder) EncodeValue(v reflect.Value) error {
 		}
 
 		// convert string to byte slice and write it
-		if _, err := x.dst.Write([]byte(v.Interface().(string))); err != nil {
+		if _, err := x.dst.Write([]byte(v.Convert(stringType).Interface().(string))); err != nil {
 			return err
 		}
 

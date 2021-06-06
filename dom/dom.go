@@ -8,23 +8,8 @@ import (
 var doc js.Value = js.Global().Get("document")
 var Root Element = Element{doc.Call("getElementById", "root")}
 
-// A Collection can pass itself as a set of DOM elements.
-type Collection interface {
-	Elements() []Element
-}
-
-// Compose is a helper function to implement the Element interface using multiple DOM objects.
-func Compose(e ...Collection) []Element {
-	if len(e) == 0 {
-		return nil
-	}
-
-	r := e[0].Elements()
-	for i := 1; i < len(e); i++ {
-		r = append(r, e[i].Elements()...)
-	}
-
-	return r
+type Base interface {
+	Base() Element
 }
 
 // A Base represents a JS DOM element and forms the basis of this package.
@@ -33,13 +18,22 @@ type Element struct {
 	js.Value // underlying JS object
 }
 
-func (x Element) Add(c Collection) {
-	for _, v := range c.Elements() {
-		x.Value.Call("appendChild", v.Value)
-	}
+func (x Element) Add(e Base) {
+	x.Value.Call("appendChild", e.Base().Value)
 }
 
 func (x Element) Handle(event string, h Handler) {
+	// onfocusin/out doesn't work properly in browsers
+	// this is a workaround
+	if event == "focusin" || event == "focusout" {
+		f := js.FuncOf(func(js.Value, []js.Value) interface{} { return nil })
+		x.Set("on"+event, f)
+		x.Call("addEventListener", event, h.f)
+		x.Call("removeEventListener", event, f)
+		return
+
+	}
+
 	x.Set("on"+event, h.f)
 }
 
@@ -95,8 +89,8 @@ func (x Element) TextSet(s string) {
 	x.Set("innerHTML", s)
 }
 
-func (x Element) Elements() []Element {
-	return []Element{x}
+func (x Element) Base() Element {
+	return x
 }
 
 type Div struct {
