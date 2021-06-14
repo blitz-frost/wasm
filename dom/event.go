@@ -4,12 +4,29 @@ import (
 	"syscall/js"
 )
 
+type EventName string
+
+const (
+	EventBlur      EventName = "blur"
+	EventClick               = "click"
+	EventFocusIn             = "focusin"
+	EventFocusOut            = "focusout"
+	EventInput               = "input"
+	EventKeyDown             = "keydown"
+	EventMouseDown           = "mousedown"
+	EventMouseUp             = "mouseup"
+)
+
 // An Event wraps a JS event object
 type Event struct {
 	js.Value
 }
 
 func (x Event) Cancel() {
+	x.Call("stopPropagation")
+}
+
+func (x Event) CancelDefault() {
 	x.Call("preventDefault")
 }
 

@@ -5,7 +5,8 @@ import (
 	"syscall/js"
 )
 
-var doc js.Value = js.Global().Get("document")
+var window js.Value = js.Global()
+var doc js.Value = window.Get("document")
 var Root Element = Element{doc.Call("getElementById", "root")}
 
 type Base interface {
@@ -22,19 +23,20 @@ func (x Element) Add(e Base) {
 	x.Value.Call("appendChild", e.Base().Value)
 }
 
-func (x Element) Handle(event string, h Handler) {
+func (x Element) Handle(event EventName, h Handler) {
+	s := string(event)
 	// onfocusin/out doesn't work properly in browsers
 	// this is a workaround
-	if event == "focusin" || event == "focusout" {
+	if s == "focusin" || s == "focusout" {
 		f := js.FuncOf(func(js.Value, []js.Value) interface{} { return nil })
-		x.Set("on"+event, f)
-		x.Call("addEventListener", event, h.f)
-		x.Call("removeEventListener", event, f)
+		x.Set("on"+s, f)
+		x.Call("addEventListener", s, h.f)
+		x.Call("removeEventListener", s, f)
 		return
 
 	}
 
-	x.Set("on"+event, h.f)
+	x.Set("on"+s, h.f)
 }
 
 func (x Element) Class() string {
@@ -61,14 +63,12 @@ func (x Element) IdSet(id string) {
 	x.Set("id", id)
 }
 
-// Style returns the current value of the specified style component.
-func (x Element) Style(name string) string {
-	return x.Get("style").Get(name).String()
-}
-
-// StyleSet sets the value of the specified style component.
-func (x Element) StyleSet(name, value string) {
-	x.Get("style").Set(name, value)
+// Style sets the value of the specified style component.
+func (x Element) Style(s Style) {
+	jsStyle := x.Get("style")
+	for k, v := range s.m {
+		jsStyle.Set(k, v)
+	}
 }
 
 func (x Element) Sub(i int) Element {
@@ -77,6 +77,14 @@ func (x Element) Sub(i int) Element {
 
 func (x Element) SubLen() int {
 	return x.Get("children").Length()
+}
+
+func (x Element) SubReplace(newElem, oldElem Base) {
+	x.Call("replaceChild", newElem.Base().Value, oldElem.Base().Value)
+}
+
+func (x Element) Super() Element {
+	return Element{(x.Get("parentElement"))}
 }
 
 // Text returns the inner HTML text node value. Panics if x does not contain a text node.
@@ -215,6 +223,10 @@ type Row struct {
 	Element
 }
 
+func AsRow(e Element) Row {
+	return Row{e}
+}
+
 // Cell returns the row's i-th cell, starting at 0.
 func (x Row) Cell(i int) Cell {
 	return Cell{Element{x.Get("cells").Index(i)}}
@@ -246,6 +258,11 @@ func NewTable() Table {
 	return Table{Element{doc.Call("createElement", "table")}}
 }
 
+// Add inserts the given row at the given position.
+func (x Table) Add(i int, r Row) {
+	x.Get("rows").Index(i).Call("insertAdjacentElement", "beforebegin", r.Element.Value)
+}
+
 // Clear deletes all rows from the table.
 func (x Table) Clear() {
 	n := x.Len()
@@ -254,9 +271,15 @@ func (x Table) Clear() {
 	}
 }
 
-// Expand inserts a new row at the bottom of the table and returns it.
-func (x Table) Expand() Row {
-	return Row{Element{x.Call("insertRow", -1)}}
+// Delete removes the specified row from the table.
+func (x Table) Delete(i int) {
+	x.Call("deleteRow", i)
+}
+
+// Expand inserts a new row at the specified position of the table and returns it.
+// If i == -1, the row is added at the end of the table.
+func (x Table) Expand(i int) Row {
+	return Row{Element{x.Call("insertRow", i)}}
 }
 
 // Len returns the table's number of rows.

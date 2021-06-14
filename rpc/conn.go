@@ -158,6 +158,9 @@ func (x *serverConn) sync() {
 }
 
 func (x *serverConn) Read(b []byte) (int, error) {
+	if len(b) == 0 {
+		return 0, nil
+	}
 	if x.err != nil {
 		return 0, x.err
 	}
