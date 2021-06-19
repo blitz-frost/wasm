@@ -79,6 +79,10 @@ func (x Element) SubLen() int {
 	return x.Get("children").Length()
 }
 
+func (x Element) SubRemove(e Base) {
+	x.Call("removeChild", e.Base().Value)
+}
+
 func (x Element) SubReplace(newElem, oldElem Base) {
 	x.Call("replaceChild", newElem.Base().Value, oldElem.Base().Value)
 }
@@ -109,12 +113,16 @@ func NewDiv() Div {
 	return Div{Element{doc.Call("createElement", "div")}}
 }
 
-type TextArea struct {
+type Para struct {
 	Element
 }
 
-func AsTextArea(e Element) TextArea {
-	return TextArea{e}
+func NewPara() Para {
+	return Para{Element{doc.Call("createElement", "p")}}
+}
+
+type TextArea struct {
+	Element
 }
 
 func NewTextArea() TextArea {
@@ -170,10 +178,6 @@ func NewSelect() Select {
 	return Select{Element{doc.Call("createElement", "select")}}
 }
 
-func AsSelect(e Element) Select {
-	return Select{e}
-}
-
 // IndexSet sets the currently active option.
 func (x Select) IndexSet(i int) {
 	x.Set("selectedIndex", i)
@@ -206,8 +210,8 @@ type Cell struct {
 	Element
 }
 
-func AsCell(e Element) Cell {
-	return Cell{e}
+func NewCell() Cell {
+	return Cell{Element{doc.Call("createElement", "td")}}
 }
 
 func (x Cell) SpanSet(n int) {
@@ -223,8 +227,20 @@ type Row struct {
 	Element
 }
 
-func AsRow(e Element) Row {
-	return Row{e}
+func NewRow() Row {
+	return Row{Element{doc.Call("createElement", "tr")}}
+}
+
+// Add adds the given cell to the row, at the specified position.
+// i == -1 is equivalent to final position.
+func (x Row) Add(i int, c Cell) {
+	if i == -1 {
+		x.Call("appendChild", c.Element.Value)
+		return
+	}
+
+	jsCell := x.Get("cells").Index(i)
+	x.Call("insertBefore", c.Element.Value, jsCell)
 }
 
 // Cell returns the row's i-th cell, starting at 0.
@@ -232,11 +248,7 @@ func (x Row) Cell(i int) Cell {
 	return Cell{Element{x.Get("cells").Index(i)}}
 }
 
-// Expand inserts a new cell at the end of the row and returns it.
-func (x Row) Expand() Cell {
-	return Cell{Element{x.Call("insertCell", -1)}}
-}
-
+// Index returns the row's position in the table that contains it.
 func (x Row) Index() int {
 	return x.Get("rowIndex").Int()
 }
@@ -250,17 +262,19 @@ type Table struct {
 	Element
 }
 
-func AsTable(e Element) Table {
-	return Table{e}
-}
-
 func NewTable() Table {
 	return Table{Element{doc.Call("createElement", "table")}}
 }
 
 // Add inserts the given row at the given position.
 func (x Table) Add(i int, r Row) {
-	x.Get("rows").Index(i).Call("insertAdjacentElement", "beforebegin", r.Element.Value)
+	if i == -1 {
+		x.Call("appendChild", r.Element.Value)
+		return
+	}
+
+	jsRow := x.Get("rows").Index(i)
+	x.Call("insertBefore", r.Element.Value, jsRow)
 }
 
 // Clear deletes all rows from the table.
@@ -274,12 +288,6 @@ func (x Table) Clear() {
 // Delete removes the specified row from the table.
 func (x Table) Delete(i int) {
 	x.Call("deleteRow", i)
-}
-
-// Expand inserts a new row at the specified position of the table and returns it.
-// If i == -1, the row is added at the end of the table.
-func (x Table) Expand(i int) Row {
-	return Row{Element{x.Call("insertRow", i)}}
 }
 
 // Len returns the table's number of rows.

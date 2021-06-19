@@ -38,10 +38,6 @@ type KeyboardEvent struct {
 	Event
 }
 
-func AsKeyboardEvent(e Event) KeyboardEvent {
-	return KeyboardEvent{e}
-}
-
 func (x KeyboardEvent) Key() string {
 	return x.Get("key").String()
 }
