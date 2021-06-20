@@ -91,6 +91,20 @@ const (
 	CursorZoomOut                 = "zoom-out"
 )
 
+type DisplayKind string
+
+const (
+	DisplayBlock       DisplayKind = "block"
+	DisplayFlex                    = "flex"
+	DisplayGrid                    = "grid"
+	DisplayInline                  = "inline"
+	DisplayInlineBlock             = "inline-block"
+	DisplayInlineFlex              = "inline-flex"
+	DisplayInlineGrid              = "inline-grid"
+	DisplayInlineTable             = "inline-table"
+	DisplayTable                   = "table"
+)
+
 type FloatKind string
 
 const (
@@ -98,6 +112,16 @@ const (
 	FloatLeft            = "left"
 	FloatRight           = "right"
 )
+
+type Length string
+
+const (
+	LengthAuto Length = "auto"
+)
+
+func LengthOf(val uint16, unit Unit) Length {
+	return Length(strconv.FormatUint(uint64(val), 10)) + Length(unit)
+}
 
 type ResizeKind string
 
@@ -123,26 +147,30 @@ type Unit string
 
 const (
 	// absolute units
-	UnitCM Unit = "cm"
-	UnitMM      = "mm"
-	UnitIN      = "in" // 1in = 96px = 2.54cm
-	UnitPX      = "px" // 1px = 1/96in
-	UnitPT      = "pt" // 1pt = 1/72in
-	UnitPC      = "pc" // 1pc = 1/6in
+	CM = "cm"
+	MM = "mm"
+	IN = "in" // 1in = 96px = 2.54cm
+	PX = "px" // 1px = 1/96in
+	PT = "pt" // 1pt = 1/72in
+	PC = "pc" // 1pc = 1/6in
 	//relative units
-	UnitEM   = "em"   // current font-size
-	UnitEX   = "ex"   // x-height of current font
-	UnitCH   = "ch"   // width of "0"
-	UnitREM  = "rem"  // root element font-size
-	UnitVW   = "vm"   // 1% of window width
-	UnitVH   = "vh"   // 1% of window height
-	UnitVMIN = "vmin" // min(vm, vh)
-	UnitVMAX = "vmax" // max(vm, vh)
-	UnitPCT  = "%"    // percentage of parent element
+	EM   = "em"   // current font-size
+	EX   = "ex"   // x-height of current font
+	CH   = "ch"   // width of "0"
+	REM  = "rem"  // root element font-size
+	VW   = "vm"   // 1% of window width
+	VH   = "vh"   // 1% of window height
+	VMIN = "vmin" // min(vm, vh)
+	VMAX = "vmax" // max(vm, vh)
+	PCT  = "%"    // percentage of parent element
 )
 
 func fmtLength(val uint16, unit Unit) string {
 	return strconv.FormatUint(uint64(val), 10) + string(unit)
+}
+
+func fmtUint16(val uint16) string {
+	return strconv.FormatUint(uint64(val), 10)
 }
 
 type Field struct {
@@ -229,10 +257,82 @@ func Cursor(val CursorKind) Attribute {
 	}}
 }
 
+func Display(val DisplayKind) Attribute {
+	return Attribute{Field{
+		Name:  "display",
+		Value: string(val),
+	}}
+}
+
 func Float(val FloatKind) Attribute {
 	return Attribute{Field{
 		Name:  "cssFloat",
 		Value: string(val),
+	}}
+}
+
+// "max-content" seems like a more sensible default, rather than the ambiguous "auto".
+func gridVal(val Length) string {
+	if val == LengthAuto {
+		return "max-content"
+	}
+	return string(val)
+}
+
+func Grid(rows []Length, cols []Length) Attribute {
+	return append(
+		GridCols(cols...),
+		GridRows(rows...)...,
+	)
+}
+
+func GridCols(cols ...Length) Attribute {
+	str := gridVal(cols[0])
+	for i, n := 1, len(cols); i < n; i++ {
+		str += " " + gridVal(cols[i])
+	}
+	return Attribute{Field{
+		Name:  "gridTemplateColumns",
+		Value: str,
+	}}
+}
+
+func GridRows(rows ...Length) Attribute {
+	str := gridVal(rows[0])
+	for i, n := 1, len(rows); i < n; i++ {
+		str += " " + gridVal(rows[i])
+	}
+	return Attribute{Field{
+		Name:  "gridTemplateRows",
+		Value: str,
+	}}
+}
+
+// Indices start at 0.
+func GridArea(rowStart, rowSpan, colStart, colSpan uint16) Attribute {
+	return append(
+		GridAreaRow(rowStart, rowSpan),
+		GridAreaCol(colStart, colSpan)...,
+	)
+}
+
+func GridAreaCol(start, span uint16) Attribute {
+	return Attribute{Field{
+		Name:  "gridColumnStart",
+		Value: fmtUint16(start + 1),
+	}, Field{
+		Name:  "gridColumnEnd",
+		Value: "span " + fmtUint16(span),
+	}}
+}
+
+func GridAreaRow(start, span uint16) Attribute {
+	return Attribute{Field{
+		Name:  "gridRowStart",
+		Value: fmtUint16(start + 1),
+	}, Field{
+		Name:  "gridRowEnd",
+		Value: "span " + fmtUint16(span),
 	}}
 }
 

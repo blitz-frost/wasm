@@ -18,7 +18,7 @@ func NewStyle(attr ...css.Attribute) Style {
 	return Style{m}
 }
 
-func (x Style) Copy() Style {
+func (x Style) Clone() Style {
 	o := NewStyle()
 
 	for k, v := range x.m {
@@ -26,6 +26,12 @@ func (x Style) Copy() Style {
 	}
 
 	return o
+}
+
+func (x Style) Include(style Style) {
+	for k, v := range style.m {
+		x.m[k] = v
+	}
 }
 
 func (x Style) Set(attr ...css.Attribute) {

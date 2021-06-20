@@ -19,24 +19,23 @@ type Element struct {
 	js.Value // underlying JS object
 }
 
-func (x Element) Add(e Base) {
-	x.Value.Call("appendChild", e.Base().Value)
+// Add adds the given elements as subelements, at the given position.
+func (x Element) Add(pos int, e ...Base) {
+	jsVal := x.Get("children").Index(pos)
+	for _, b := range e {
+		x.Call("insertBefore", b.Base().Value, jsVal)
+	}
 }
 
-func (x Element) Handle(event EventName, h Handler) {
-	s := string(event)
-	// onfocusin/out doesn't work properly in browsers
-	// this is a workaround
-	if s == "focusin" || s == "focusout" {
-		f := js.FuncOf(func(js.Value, []js.Value) interface{} { return nil })
-		x.Set("on"+s, f)
-		x.Call("addEventListener", s, h.f)
-		x.Call("removeEventListener", s, f)
-		return
-
+// Append adds the given elements as final subelement.
+func (x Element) Append(e ...Base) {
+	for _, b := range e {
+		x.Call("appendChild", b.Base().Value)
 	}
+}
 
-	x.Set("on"+s, h.f)
+func (x Element) Blur() {
+	x.Call("blur")
 }
 
 func (x Element) Class() string {
@@ -55,12 +54,44 @@ func (x Element) Focus() {
 	x.Call("focus")
 }
 
+func (x Element) Handle(event EventName, h Handler) {
+	s := string(event)
+	// onfocusin/out doesn't work properly in browsers
+	// this is a workaround
+	if s == "focusin" || s == "focusout" {
+		f := js.FuncOf(func(js.Value, []js.Value) interface{} { return nil })
+		x.Set("on"+s, f)
+		x.Call("addEventListener", s, h.f)
+		x.Call("removeEventListener", s, f)
+		return
+
+	}
+
+	x.Set("on"+s, h.f)
+}
+
 func (x Element) Id() string {
 	return x.Get("id").String()
 }
 
 func (x Element) IdSet(id string) {
 	x.Set("id", id)
+}
+
+// Len returns the number of subelement.
+func (x Element) Len() int {
+	return x.Get("children").Length()
+}
+
+// Remove removes the specified subelements.
+func (x Element) Remove(e ...Base) {
+	for _, b := range e {
+		x.Call("removeChild", b.Base().Value)
+	}
+}
+
+func (x Element) Replace(newElem, oldElem Base) {
+	x.Call("replaceChild", newElem.Base().Value, oldElem.Base().Value)
 }
 
 // Style sets the value of the specified style component.
@@ -73,18 +104,6 @@ func (x Element) Style(s Style) {
 
 func (x Element) Sub(i int) Element {
 	return Element{(x.Get("children").Index(i))}
-}
-
-func (x Element) SubLen() int {
-	return x.Get("children").Length()
-}
-
-func (x Element) SubRemove(e Base) {
-	x.Call("removeChild", e.Base().Value)
-}
-
-func (x Element) SubReplace(newElem, oldElem Base) {
-	x.Call("replaceChild", newElem.Base().Value, oldElem.Base().Value)
 }
 
 func (x Element) Super() Element {
@@ -231,16 +250,17 @@ func NewRow() Row {
 	return Row{Element{doc.Call("createElement", "tr")}}
 }
 
-// Add adds the given cell to the row, at the specified position.
-// i == -1 is equivalent to final position.
-func (x Row) Add(i int, c Cell) {
-	if i == -1 {
-		x.Call("appendChild", c.Element.Value)
-		return
+func (x Row) Add(pos int, cell ...Cell) {
+	jsCell := x.Get("cells").Index(pos)
+	for _, c := range cell {
+		x.Call("insertBefore", c.Element.Value, jsCell)
 	}
+}
 
-	jsCell := x.Get("cells").Index(i)
-	x.Call("insertBefore", c.Element.Value, jsCell)
+func (x Row) Append(cell ...Cell) {
+	for _, c := range cell {
+		x.Call("appendChild", c.Element.Value)
+	}
 }
 
 // Cell returns the row's i-th cell, starting at 0.
@@ -266,15 +286,17 @@ func NewTable() Table {
 	return Table{Element{doc.Call("createElement", "table")}}
 }
 
-// Add inserts the given row at the given position.
-func (x Table) Add(i int, r Row) {
-	if i == -1 {
-		x.Call("appendChild", r.Element.Value)
-		return
-	}
-
+func (x Table) Add(i int, row ...Row) {
 	jsRow := x.Get("rows").Index(i)
-	x.Call("insertBefore", r.Element.Value, jsRow)
+	for _, r := range row {
+		x.Call("insertBefore", r.Element.Value, jsRow)
+	}
+}
+
+func (x Table) Append(row ...Row) {
+	for _, r := range row {
+		x.Call("appendChild", r.Element.Value)
+	}
 }
 
 // Clear deletes all rows from the table.
