@@ -128,7 +128,7 @@ type Div struct {
 	Element
 }
 
-func NewDiv() Div {
+func MakeDiv() Div {
 	return Div{Element{doc.Call("createElement", "div")}}
 }
 
@@ -136,7 +136,7 @@ type Para struct {
 	Element
 }
 
-func NewPara() Para {
+func MakePara() Para {
 	return Para{Element{doc.Call("createElement", "p")}}
 }
 
@@ -144,7 +144,7 @@ type TextArea struct {
 	Element
 }
 
-func NewTextArea() TextArea {
+func MakeTextArea() TextArea {
 	return TextArea{Element{doc.Call("createElement", "textarea")}}
 }
 
@@ -168,7 +168,7 @@ type Button struct {
 	Element
 }
 
-func NewButton() Button {
+func MakeButton() Button {
 	return Button{Element{doc.Call("createElement", "button")}}
 }
 
@@ -176,7 +176,7 @@ type Option struct {
 	Element
 }
 
-func NewOption() Option {
+func MakeOption() Option {
 	return Option{Element{doc.Call("createElement", "option")}}
 }
 
@@ -193,7 +193,7 @@ type Select struct {
 	Element
 }
 
-func NewSelect() Select {
+func MakeSelect() Select {
 	return Select{Element{doc.Call("createElement", "select")}}
 }
 
@@ -215,7 +215,7 @@ func (x Select) ValueSet(val string) {
 
 // Expand inserts a new option at the end of the list and returns it.
 func (x Select) Expand() Option {
-	r := NewOption()
+	r := MakeOption()
 	x.Call("add", r.Element.Value)
 	return r
 }
@@ -229,12 +229,20 @@ type Cell struct {
 	Element
 }
 
-func NewCell() Cell {
+func MakeCell() Cell {
 	return Cell{Element{doc.Call("createElement", "td")}}
 }
 
-func (x Cell) SpanSet(n int) {
+func (x Cell) Index() int {
+	return x.Get("cellIndex").Int()
+}
+
+func (x Cell) SpanColSet(n int) {
 	x.Set("colSpan", n)
+}
+
+func (x Cell) SpanRowSet(n int) {
+	x.Set("rowSpan", n)
 }
 
 func (x Cell) Row() Row {
@@ -246,7 +254,7 @@ type Row struct {
 	Element
 }
 
-func NewRow() Row {
+func MakeRow() Row {
 	return Row{Element{doc.Call("createElement", "tr")}}
 }
 
@@ -268,6 +276,10 @@ func (x Row) Cell(i int) Cell {
 	return Cell{Element{x.Get("cells").Index(i)}}
 }
 
+func (x Row) Delete(i int) {
+	x.Call("deleteCell", i)
+}
+
 // Index returns the row's position in the table that contains it.
 func (x Row) Index() int {
 	return x.Get("rowIndex").Int()
@@ -278,11 +290,15 @@ func (x Row) Len() int {
 	return x.Get("cells").Length()
 }
 
+func (x Row) Table() Table {
+	return Table{Element{x.Get("parentElement")}}
+}
+
 type Table struct {
 	Element
 }
 
-func NewTable() Table {
+func MakeTable() Table {
 	return Table{Element{doc.Call("createElement", "table")}}
 }
 

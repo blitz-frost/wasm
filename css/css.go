@@ -102,7 +102,10 @@ const (
 	DisplayInlineFlex              = "inline-flex"
 	DisplayInlineGrid              = "inline-grid"
 	DisplayInlineTable             = "inline-table"
+	DisplayNone                    = "none"
 	DisplayTable                   = "table"
+	DisplayTableCell               = "table-cell"
+	DisplayTableRow                = "table-row"
 )
 
 type FloatKind string
@@ -165,6 +168,19 @@ const (
 	PCT  = "%"    // percentage of parent element
 )
 
+type VAlign string
+
+const (
+	VBaseline   VAlign = "baseline"
+	VBottom            = "bottom"
+	VMiddle            = "middle"
+	VTop               = "top"
+	VTextBottom        = "text-bottom"
+	VTextTop           = "text-top"
+	VSub               = "sub"
+	VSuper             = "super"
+)
+
 func fmtLength(val uint16, unit Unit) string {
 	return strconv.FormatUint(uint64(val), 10) + string(unit)
 }
@@ -200,6 +216,27 @@ func sideLong(base, name, val string, sides ...Side) Attribute {
 		}
 	}
 	return o
+}
+
+func AlignText(val Align) Attribute {
+	return Attribute{Field{
+		Name:  "textAlign",
+		Value: string(val),
+	}}
+}
+
+func AlignVertical(val VAlign) Attribute {
+	return Attribute{Field{
+		Name:  "verticalAlign",
+		Value: string(val),
+	}}
+}
+
+func AlignVerticalL(val uint16, unit Unit) Attribute {
+	return Attribute{Field{
+		Name:  "verticalAlign",
+		Value: fmtLength(val, unit),
+	}}
 }
 
 func BackgroundColor(color Color) Attribute {
@@ -368,13 +405,6 @@ func Padding(val uint16, unit Unit, sides ...Side) Attribute {
 func Resize(val ResizeKind) Attribute {
 	return Attribute{Field{
 		Name:  "resize",
-		Value: string(val),
-	}}
-}
-
-func TextAlign(val Align) Attribute {
-	return Attribute{Field{
-		Name:  "textAlign",
 		Value: string(val),
 	}}
 }

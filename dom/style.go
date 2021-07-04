@@ -8,7 +8,7 @@ type Style struct {
 	m map[string]string
 }
 
-func NewStyle(attr ...css.Attribute) Style {
+func MakeStyle(attr ...css.Attribute) Style {
 	m := make(map[string]string)
 	for _, a := range attr {
 		for _, field := range a {
@@ -18,12 +18,15 @@ func NewStyle(attr ...css.Attribute) Style {
 	return Style{m}
 }
 
-func (x Style) Clone() Style {
-	o := NewStyle()
+// Fork returns a copy of the target style, with the provided modifications.
+func (x Style) Fork(attr ...css.Attribute) Style {
+	o := MakeStyle()
 
 	for k, v := range x.m {
 		o.m[k] = v
 	}
+
+	o.Set(attr...)
 
 	return o
 }

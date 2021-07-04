@@ -47,7 +47,7 @@ type Handler struct {
 	f js.Func
 }
 
-func NewHandler(fn func(this Element, e Event)) Handler {
+func MakeHandler(fn func(this Element, e Event)) Handler {
 	return Handler{js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		go func() { fn(Element{this}, Event{args[0]}) }()
 		return nil
