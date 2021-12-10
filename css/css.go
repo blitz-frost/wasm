@@ -37,7 +37,9 @@ const (
 	CadetBlue            = "cadetblue"
 	CornflowerBlue       = "cornflowerblue"
 	Cyan                 = "cyan"
+	DarkSlateGrey        = "darkslategrey"
 	Salmon               = "salmon"
+	Thistle              = "thistle"
 	White                = "white"
 	WhiteSmoke           = "whitesmoke"
 )
@@ -116,6 +118,20 @@ const (
 	FloatRight           = "right"
 )
 
+type FontStyleKind string
+
+const (
+	FontStyleItalic FontStyleKind = "italic"
+	FontStyleNormal               = "normal"
+)
+
+type FontWeightKind string
+
+const (
+	FontWeightBold   FontWeightKind = "bold"
+	FontWeightNormal                = "normal"
+)
+
 type Length string
 
 const (
@@ -125,6 +141,16 @@ const (
 func LengthOf(val uint16, unit Unit) Length {
 	return Length(strconv.FormatUint(uint64(val), 10)) + Length(unit)
 }
+
+type PositionKind string
+
+const (
+	PositionAbsolute PositionKind = "absolute"
+	PositionFixed                 = "fixed"
+	PositionRelative              = "relative"
+	PositionStatic                = "static"
+	PositionSticky                = "sticky"
+)
 
 type ResizeKind string
 
@@ -145,6 +171,16 @@ const (
 )
 
 var SideAll []Side = []Side{Bottom, Left, Right, Top}
+
+type SpaceKind string
+
+const (
+	SpaceNormal  SpaceKind = "normal"
+	SpaceNoWrap            = "nowrap"
+	SpacePre               = "pre"
+	SpacePreLine           = "pre-line"
+	SpacePreWrap           = "pre-wrap"
+)
 
 type Unit string
 
@@ -189,123 +225,130 @@ func fmtUint16(val uint16) string {
 	return strconv.FormatUint(uint64(val), 10)
 }
 
-type Field struct {
-	Name  string
-	Value string
+type Style map[string]string
+
+// MakeStyle returns a new style that unites all argument styles.
+func MakeStyle(src ...Style) Style {
+	x := make(Style)
+	for _, s := range src {
+		for k, v := range s {
+			x[k] = v
+		}
+	}
+	return x
 }
 
-type Attribute []Field
+// Fork is a shorthand for MakeStyle(x, src...)
+func (x Style) Fork(src ...Style) Style {
+	return MakeStyle(append(src, x)...)
+}
 
-func side(name, val string, sides ...Side) Attribute {
-	o := make(Attribute, len(sides))
-	for i, side := range sides {
-		o[i] = Field{
-			Name:  name + string(side),
-			Value: val,
+// Set includes the argument styles into the target.
+func (x Style) Set(src ...Style) {
+	for _, s := range src {
+		for k, v := range s {
+			x[k] = v
 		}
+	}
+}
+
+func side(name, val string, sides ...Side) Style {
+	o := make(Style, len(sides))
+	for _, side := range sides {
+		k := name + string(side)
+		o[k] = val
 	}
 	return o
 }
 
-func sideLong(base, name, val string, sides ...Side) Attribute {
-	o := make(Attribute, len(sides))
-	for i, side := range sides {
-		o[i] = Field{
-			Name:  base + string(side) + name,
-			Value: val,
-		}
+func sideLong(base, name, val string, sides ...Side) Style {
+	o := make(Style, len(sides))
+	for _, side := range sides {
+		k := base + string(side) + name
+		o[k] = val
 	}
 	return o
 }
 
-func AlignText(val Align) Attribute {
-	return Attribute{Field{
-		Name:  "textAlign",
-		Value: string(val),
-	}}
+func AlignText(val Align) Style {
+	return Style{"textAlign": string(val)}
 }
 
-func AlignVertical(val VAlign) Attribute {
-	return Attribute{Field{
-		Name:  "verticalAlign",
-		Value: string(val),
-	}}
+func AlignVertical(val VAlign) Style {
+	return Style{"verticalAlign": string(val)}
 }
 
-func AlignVerticalL(val uint16, unit Unit) Attribute {
-	return Attribute{Field{
-		Name:  "verticalAlign",
-		Value: fmtLength(val, unit),
-	}}
+func AlignVerticalL(val uint16, unit Unit) Style {
+	return Style{"verticalAlign": fmtLength(val, unit)}
 }
 
-func BackgroundColor(color Color) Attribute {
-	return Attribute{Field{
-		Name:  "backgroundColor",
-		Value: string(color),
-	}}
+func BackgroundColor(color Color) Style {
+	return Style{"backgroundColor": string(color)}
 }
 
-func Border(width uint16, unit Unit, style BorderStyleKind, color Color, sides ...Side) Attribute {
+func Border(width uint16, unit Unit, style BorderStyleKind, color Color, sides ...Side) Style {
 	val := fmtLength(width, unit) + " " + string(style) + " " + string(color)
 	return side("border", val, sides...)
 }
 
-func BorderCollapse(val bool) Attribute {
+func BorderCollapse(val bool) Style {
 	var str string
 	if val {
 		str = "collapse"
 	} else {
 		str = "separate"
 	}
-	return Attribute{Field{
-		Name:  "borderCollapse",
-		Value: str,
-	}}
+	return Style{"borderCollapse": str}
 }
 
-func BorderColor(color Color, sides ...Side) Attribute {
+func BorderColor(color Color, sides ...Side) Style {
 	return sideLong("border", "Color", string(color), sides...)
 }
 
-func BorderRadius(val uint16, unit Unit, corners ...Corner) Attribute {
-	o := make(Attribute, len(corners))
-	for i, corner := range corners {
-		o[i] = Field{
-			Name:  "border" + string(corner) + "Radius",
-			Value: fmtLength(val, unit),
-		}
+func BorderRadius(val uint16, unit Unit, corners ...Corner) Style {
+	o := make(Style, len(corners))
+	for _, corner := range corners {
+		k := "border" + string(corner) + "Radius"
+		o[k] = fmtLength(val, unit)
 	}
 	return o
 }
 
-func BorderStyle(style BorderStyleKind, sides ...Side) Attribute {
+func BorderStyle(style BorderStyleKind, sides ...Side) Style {
 	return sideLong("border", "Style", string(style), sides...)
 }
 
-func BorderWidth(width uint16, unit Unit, sides ...Side) Attribute {
+func BorderWidth(width uint16, unit Unit, sides ...Side) Style {
 	return sideLong("border", "Width", fmtLength(width, unit), sides...)
 }
 
-func Cursor(val CursorKind) Attribute {
-	return Attribute{Field{
-		Name:  "cursor",
-		Value: string(val),
-	}}
+func Cursor(val CursorKind) Style {
+	return Style{"cursor": string(val)}
 }
 
-func Display(val DisplayKind) Attribute {
-	return Attribute{Field{
-		Name:  "display",
-		Value: string(val),
-	}}
+func Display(val DisplayKind) Style {
+	return Style{"display": string(val)}
 }
 
-func Float(val FloatKind) Attribute {
-	return Attribute{Field{
-		Name:  "cssFloat",
-		Value: string(val),
-	}}
+func Float(val FloatKind) Style {
+	return Style{"cssFloat": string(val)}
+}
+
+// Font sets the css font family. Quotes the name.
+func Font(name string) Style {
+	return Style{"fontFamily": "\"" + name + "\""}
+}
+
+func FontSize(size uint16, unit Unit) Style {
+	return Style{"fontSize": fmtLength(size, unit)}
+}
+
+func FontStyle(val FontStyleKind) Style {
+	return Style{"fontStyle": string(val)}
+}
+
+func FontWeight(val FontWeightKind) Style {
+	return Style{"fontWeight": string(val)}
 }
 
 // "max-content" seems like a more sensible default, rather than the ambiguous "auto".
@@ -316,116 +359,123 @@ func gridVal(val Length) string {
 	return string(val)
 }
 
-func Grid(rows []Length, cols []Length) Attribute {
-	return append(
+func Grid(rows []Length, cols []Length) Style {
+	return MakeStyle(
 		GridCols(cols...),
-		GridRows(rows...)...,
+		GridRows(rows...),
 	)
 }
 
-func GridCols(cols ...Length) Attribute {
+func GridCols(cols ...Length) Style {
 	str := gridVal(cols[0])
 	for i, n := 1, len(cols); i < n; i++ {
 		str += " " + gridVal(cols[i])
 	}
-	return Attribute{Field{
-		Name:  "gridTemplateColumns",
-		Value: str,
-	}}
+	return Style{"gridTemplateColumns": str}
 }
 
-func GridRows(rows ...Length) Attribute {
+func GridRows(rows ...Length) Style {
 	str := gridVal(rows[0])
 	for i, n := 1, len(rows); i < n; i++ {
 		str += " " + gridVal(rows[i])
 	}
-	return Attribute{Field{
-		Name:  "gridTemplateRows",
-		Value: str,
-	}}
+	return Style{"gridTemplateRows": str}
 }
 
 // Indices start at 0.
-func GridArea(rowStart, rowSpan, colStart, colSpan uint16) Attribute {
-	return append(
+func GridArea(rowStart, rowSpan, colStart, colSpan uint16) Style {
+	return MakeStyle(
 		GridAreaRow(rowStart, rowSpan),
-		GridAreaCol(colStart, colSpan)...,
+		GridAreaCol(colStart, colSpan),
 	)
 }
 
-func GridAreaCol(start, span uint16) Attribute {
-	return Attribute{Field{
-		Name:  "gridColumnStart",
-		Value: fmtUint16(start + 1),
-	}, Field{
-		Name:  "gridColumnEnd",
-		Value: "span " + fmtUint16(span),
-	}}
+func GridAreaCol(start, span uint16) Style {
+	return Style{
+		"gridColumnStart": fmtUint16(start + 1),
+		"gridColumnEnd":   "span " + fmtUint16(span),
+	}
 }
 
-func GridAreaRow(start, span uint16) Attribute {
-	return Attribute{Field{
-		Name:  "gridRowStart",
-		Value: fmtUint16(start + 1),
-	}, Field{
-		Name:  "gridRowEnd",
-		Value: "span " + fmtUint16(span),
-	}}
+func GridAreaRow(start, span uint16) Style {
+	return Style{
+		"gridRowStart": fmtUint16(start + 1),
+		"gridRowEnd":   "span " + fmtUint16(span),
+	}
 }
 
-func Height(val uint16, unit Unit) Attribute {
-	return Attribute{Field{
-		Name:  "height",
-		Value: fmtLength(val, unit),
-	}}
+func Height(val uint16, unit Unit) Style {
+	return Style{"height": fmtLength(val, unit)}
 }
 
-func HeightMax(val uint16, unit Unit) Attribute {
-	return Attribute{Field{
-		Name:  "maxHeight",
-		Value: fmtLength(val, unit),
-	}}
+func HeightMax(val uint16, unit Unit) Style {
+	return Style{"maxHeight": fmtLength(val, unit)}
 }
 
-func HeightMin(val uint16, unit Unit) Attribute {
-	return Attribute{Field{
-		Name:  "minHeight",
-		Value: fmtLength(val, unit),
-	}}
+func HeightMin(val uint16, unit Unit) Style {
+	return Style{"minHeight": fmtLength(val, unit)}
 }
 
-func Margin(val uint16, unit Unit, sides ...Side) Attribute {
+func Margin(val uint16, unit Unit, sides ...Side) Style {
 	return side("margin", fmtLength(val, unit), sides...)
 }
 
-func Padding(val uint16, unit Unit, sides ...Side) Attribute {
+func OutlineStyle(val BorderStyleKind) Style {
+	return Style{"outlineStyle": string(val)}
+}
+
+func Padding(val uint16, unit Unit, sides ...Side) Style {
 	return side("padding", fmtLength(val, unit), sides...)
 }
 
-func Resize(val ResizeKind) Attribute {
-	return Attribute{Field{
-		Name:  "resize",
-		Value: string(val),
-	}}
+func Position(val PositionKind) Style {
+	return Style{"position": string(val)}
 }
 
-func Width(val uint16, unit Unit) Attribute {
-	return Attribute{Field{
-		Name:  "width",
-		Value: fmtLength(val, unit),
-	}}
+func Resize(val ResizeKind) Style {
+	return Style{"resize": string(val)}
 }
 
-func WidthMax(val uint16, unit Unit) Attribute {
-	return Attribute{Field{
-		Name:  "maxWidth",
-		Value: fmtLength(val, unit),
-	}}
+func TabSize(val uint8) Style {
+	return Style{"tabSize": strconv.FormatUint(uint64(val), 10)}
 }
 
-func WidthMin(val uint16, unit Unit) Attribute {
-	return Attribute{Field{
-		Name:  "minWidth",
-		Value: fmtLength(val, unit),
-	}}
+func TextColor(val Color) Style {
+	return Style{"color": string(val)}
+}
+
+func TextLineHeight(coef float64) Style {
+	return Style{"lineHeight": strconv.FormatFloat(coef, 'f', 1, 64)}
+}
+
+func Translate(x int16, unitX Unit, y int16, unitY Unit) Style {
+	valX := strconv.Itoa(int(x)) + string(unitX)
+	valY := strconv.Itoa(int(y)) + string(unitY)
+	return Style{"transform": "translate(" + valX + "," + valY + ")"}
+}
+
+func WhiteSpace(val SpaceKind) Style {
+	return Style{"whiteSpace": string(val)}
+}
+
+func Width(val uint16, unit Unit) Style {
+	return Style{"width": fmtLength(val, unit)}
+}
+
+func WidthMax(val uint16, unit Unit) Style {
+	return Style{"maxWidth": fmtLength(val, unit)}
+}
+
+func WidthMin(val uint16, unit Unit) Style {
+	return Style{"minWidth": fmtLength(val, unit)}
+}
+
+// X sets the position on the horizontal axis
+func X(val uint16, unit Unit) Style {
+	return Style{"left": fmtLength(val, unit)}
+}
+
+// Y sets the position on the vertical axis
+func Y(val uint16, unit Unit) Style {
+	return Style{"top": fmtLength(val, unit)}
 }

@@ -1,3 +1,3 @@
 module github.com/blitz-frost/wasm
 
-go 1.16
+go 1.17

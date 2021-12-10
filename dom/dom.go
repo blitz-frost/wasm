@@ -1,8 +1,10 @@
-// Package dom wraps JS DOM elements
+// Package dom wraps JS DOM elements.
 package dom
 
 import (
 	"syscall/js"
+
+	"github.com/blitz-frost/wasm/css"
 )
 
 var window js.Value = js.Global()
@@ -46,6 +48,12 @@ func (x Element) ClassSet(name string) {
 	x.Set("className", name)
 }
 
+// Delete removes the subelement at index i.
+func (x Element) Delete(i int) {
+	sub := x.Get("children").Index(i)
+	sub.Call("remove")
+}
+
 func (x Element) EditableSet(t bool) {
 	x.Set("contentEditable", t)
 }
@@ -54,20 +62,18 @@ func (x Element) Focus() {
 	x.Call("focus")
 }
 
+// Handle subscribes the given Handler to the specified event.
 func (x Element) Handle(event EventName, h Handler) {
-	s := string(event)
-	// onfocusin/out doesn't work properly in browsers
-	// this is a workaround
-	if s == "focusin" || s == "focusout" {
-		f := js.FuncOf(func(js.Value, []js.Value) interface{} { return nil })
-		x.Set("on"+s, f)
-		x.Call("addEventListener", s, h.f)
-		x.Call("removeEventListener", s, f)
-		return
+	x.Call("addEventListener", string(event), h.f)
+}
 
-	}
+// HandleRemove unsubscribes the given Handler from the specified event.
+func (x Element) HandleRemove(event EventName, h Handler) {
+	x.Call("removeEventListener", string(event), h.f)
+}
 
-	x.Set("on"+s, h.f)
+func (x Element) Height() uint16 {
+	return uint16(x.Get("offsetHeight").Float())
 }
 
 func (x Element) Id() string {
@@ -83,6 +89,18 @@ func (x Element) Len() int {
 	return x.Get("children").Length()
 }
 
+// Next returns the next element in the same node.
+// Returns an empty Element if there is none.
+func (x Element) Next() Element {
+	return Element{x.Get("nextElementSibling")}
+}
+
+// Previous returns the previous element in the same node.
+// Returns an empty Element if there is none.
+func (x Element) Previous() Element {
+	return Element{x.Get("previousElementSibling")}
+}
+
 // Remove removes the specified subelements.
 func (x Element) Remove(e ...Base) {
 	for _, b := range e {
@@ -90,15 +108,26 @@ func (x Element) Remove(e ...Base) {
 	}
 }
 
+// RemoveSelf removes the target Element from the dom
+func (x Element) RemoveSelf() {
+	x.Call("remove")
+}
+
 func (x Element) Replace(newElem, oldElem Base) {
 	x.Call("replaceChild", newElem.Base().Value, oldElem.Base().Value)
 }
 
+func (x Element) SpellcheckSet(val bool) {
+	x.Set("spellcheck", val)
+}
+
 // Style sets the value of the specified style component.
-func (x Element) Style(s Style) {
+func (x Element) Style(style ...css.Style) {
 	jsStyle := x.Get("style")
-	for k, v := range s.m {
-		jsStyle.Set(k, v)
+	for _, s := range style {
+		for k, v := range s {
+			jsStyle.Set(k, v)
+		}
 	}
 }
 
@@ -118,6 +147,10 @@ func (x Element) Text() string {
 // TextSet sets the inner HTML of x as a text node with the provided value.
 func (x Element) TextSet(s string) {
 	x.Set("innerHTML", s)
+}
+
+func (x Element) Width() uint16 {
+	return uint16(x.Get("offsetWidth").Float())
 }
 
 func (x Element) Base() Element {
@@ -197,6 +230,18 @@ func MakeSelect() Select {
 	return Select{Element{doc.Call("createElement", "select")}}
 }
 
+func (x Select) Add(pos int, opt ...Option) {
+	for i, op := range opt {
+		x.Call("add", op.Element.Value, pos+i)
+	}
+}
+
+func (x Select) Append(opt ...Option) {
+	for _, op := range opt {
+		x.Call("add", op.Element.Value)
+	}
+}
+
 // IndexSet sets the currently active option.
 func (x Select) IndexSet(i int) {
 	x.Set("selectedIndex", i)
@@ -211,13 +256,6 @@ func (x Select) Value() string {
 // If no option has that value, the active option will be empty.
 func (x Select) ValueSet(val string) {
 	x.Set("value", val)
-}
-
-// Expand inserts a new option at the end of the list and returns it.
-func (x Select) Expand() Option {
-	r := MakeOption()
-	x.Call("add", r.Element.Value)
-	return r
 }
 
 func (x Select) Len() int {

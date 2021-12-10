@@ -7,14 +7,16 @@ import (
 type EventName string
 
 const (
-	EventBlur      EventName = "blur"
-	EventClick               = "click"
-	EventFocusIn             = "focusin"
-	EventFocusOut            = "focusout"
-	EventInput               = "input"
-	EventKeyDown             = "keydown"
-	EventMouseDown           = "mousedown"
-	EventMouseUp             = "mouseup"
+	EventBlur       EventName = "blur"
+	EventChange               = "change"
+	EventClick                = "click"
+	EventClickRight           = "contextmenu"
+	EventFocusIn              = "focusin"
+	EventFocusOut             = "focusout"
+	EventInput                = "input"
+	EventKeyDown              = "keydown"
+	EventMouseDown            = "mousedown"
+	EventMouseUp              = "mouseup"
 )
 
 // An Event wraps a JS event object
@@ -38,8 +40,25 @@ type KeyboardEvent struct {
 	Event
 }
 
+// Ctrl returns true if the Ctrl key is being pressed.
+func (x KeyboardEvent) Ctrl() bool {
+	return x.Get("ctrlKey").Bool()
+}
+
 func (x KeyboardEvent) Key() string {
 	return x.Get("key").String()
+}
+
+type MouseEvent struct {
+	Event
+}
+
+func (x MouseEvent) X() uint16 {
+	return uint16(x.Get("pageX").Float())
+}
+
+func (x MouseEvent) Y() uint16 {
+	return uint16(x.Get("pageY").Float())
 }
 
 // A Handler wraps a JS event handler function.
@@ -47,9 +66,17 @@ type Handler struct {
 	f js.Func
 }
 
-func MakeHandler(fn func(this Element, e Event)) Handler {
+// MakeHandler wraps a Go function to be used as a DOM event handler.
+// fn must be non blocking, otherwise the application will deadlock.
+// Notably, http requests block.
+func MakeHandler(fn func(e Event)) Handler {
 	return Handler{js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		go func() { fn(Element{this}, Event{args[0]}) }()
+		fn(Event{args[0]})
 		return nil
 	})}
+}
+
+// Delete releases the underlying JS function.
+func (x *Handler) Delete() {
+	x.f.Release()
 }
