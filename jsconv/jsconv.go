@@ -94,9 +94,9 @@ func (x JSValue) JSValue() js.Value {
 
 var jsValueType = reflect.TypeOf(JSValue{})
 
-// From converts the source js value, storing it into the destination go pointer.
+// To converts the source js value, storing it into the destination go pointer.
 // dst must be a pointer to an appropriate type.
-func From(dst interface{}, src js.Wrapper) error {
+func To(dst interface{}, src js.Wrapper) error {
 	if dst == nil {
 		return errors.New("nil destination")
 	}
@@ -106,12 +106,12 @@ func From(dst interface{}, src js.Wrapper) error {
 		return errors.New("destination not a pointer")
 	}
 
-	return FromValue(v.Elem(), src)
+	return ToValue(v.Elem(), src)
 }
 
-// FromValue is the underling implementation of From.
+// ToValue is the underling implementation of From.
 // dst must be a settable destination value or a pointer to an appropriate value.
-func FromValue(dst reflect.Value, src js.Wrapper) error {
+func ToValue(dst reflect.Value, src js.Wrapper) error {
 	srcVal := src.JSValue()
 
 	v := reflect.Indirect(dst)
@@ -167,7 +167,7 @@ func FromValue(dst reflect.Value, src js.Wrapper) error {
 			}
 
 			for i := 0; i < n; i++ {
-				if err := FromValue(v.Index(i), srcVal.Index(i)); err != nil {
+				if err := ToValue(v.Index(i), srcVal.Index(i)); err != nil {
 					return err
 				}
 			}
@@ -178,7 +178,7 @@ func FromValue(dst reflect.Value, src js.Wrapper) error {
 			fields := reflect.VisibleFields(t)
 			for _, field := range fields {
 				s := unexported(field.Name)
-				if err := FromValue(v.FieldByIndex(field.Index), srcVal.Get(s)); err != nil {
+				if err := ToValue(v.FieldByIndex(field.Index), srcVal.Get(s)); err != nil {
 					return err
 				}
 			}
@@ -200,7 +200,7 @@ func FromValue(dst reflect.Value, src js.Wrapper) error {
 				key.SetString(keyStr)
 
 				val := reflect.New(valType).Elem()
-				if err := FromValue(val, srcVal.Get(keyStr)); err != nil {
+				if err := ToValue(val, srcVal.Get(keyStr)); err != nil {
 					return err
 				}
 
@@ -220,7 +220,7 @@ func FromValue(dst reflect.Value, src js.Wrapper) error {
 // toDirect returns a value that is directly convertible using js.ValueOf
 func toDirect(v reflect.Value) (interface{}, error) {
 	v = reflect.Indirect(v)
-	t := reflect.TypeOf(v)
+	t := v.Type()
 
 	if _, ok := directTypes[t]; ok {
 		return v.Interface(), nil
@@ -287,20 +287,20 @@ func toDirect(v reflect.Value) (interface{}, error) {
 	return o, nil
 }
 
-// To converts the input Go value to JS.
+// From converts the input Go value to JS.
 // Pointers are flattened.
 // Only maps with string keys are allowed.
-func To(src interface{}) (js.Value, error) {
+func From(src interface{}) (js.Value, error) {
 	// reflect.ValueOf(nil) produces an invalid Value
 	if src == nil {
 		return js.Null(), nil
 	}
 
-	return ToValue(reflect.ValueOf(src))
+	return FromValue(reflect.ValueOf(src))
 }
 
-// ToValue is the reflect version of "To".
-func ToValue(v reflect.Value) (js.Value, error) {
+// FromValue is the reflect version of "To".
+func FromValue(v reflect.Value) (js.Value, error) {
 	direct, err := toDirect(v)
 	if err != nil {
 		return js.Undefined(), err

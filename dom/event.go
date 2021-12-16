@@ -77,6 +77,6 @@ func MakeHandler(fn func(e Event)) Handler {
 }
 
 // Delete releases the underlying JS function.
-func (x *Handler) Delete() {
+func (x Handler) Delete() {
 	x.f.Release()
 }
