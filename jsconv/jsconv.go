@@ -85,7 +85,7 @@ var integerKinds = map[reflect.Kind]struct{}{
 	reflect.Uint64: struct{}{},
 }
 
-// JSValue can be used to defer JS to Go conversion using the "From" methods.
+// JSValue can be used to defer JS to Go conversion using the "To" methods.
 type JSValue js.Value
 
 func (x JSValue) JSValue() js.Value {
@@ -93,6 +93,24 @@ func (x JSValue) JSValue() js.Value {
 }
 
 var jsValueType = reflect.TypeOf(JSValue{})
+
+// Keys returns all the keys in obj.
+// Returns nil if obj is not a JS object.
+func Keys(obj js.Wrapper) []string {
+	val := obj.JSValue()
+	if val.Type() != js.TypeObject {
+		return nil
+	}
+
+	keysJs := object.Call("keys", val)
+	n := keysJs.Length()
+	o := make([]string, n)
+	for i := 0; i < n; i++ {
+		o[i] = keysJs.Index(i).String()
+	}
+
+	return o
+}
 
 // To converts the source js value, storing it into the destination go pointer.
 // dst must be a pointer to an appropriate type.
@@ -109,7 +127,7 @@ func To(dst interface{}, src js.Wrapper) error {
 	return ToValue(v.Elem(), src)
 }
 
-// ToValue is the underling implementation of From.
+// ToValue is the underling implementation of To.
 // dst must be a settable destination value or a pointer to an appropriate value.
 func ToValue(dst reflect.Value, src js.Wrapper) error {
 	srcVal := src.JSValue()
@@ -191,11 +209,8 @@ func ToValue(dst reflect.Value, src js.Wrapper) error {
 
 			v.Set(reflect.MakeMap(t)) // clear map
 
-			keys := object.Call("keys", src)
-			n := keys.Length()
-			for i := 0; i < n; i++ {
-				keyStr := keys.Index(i).String() // key string
-
+			keys := Keys(src)
+			for _, keyStr := range keys {
 				key := reflect.New(keyType).Elem() // key value
 				key.SetString(keyStr)
 
