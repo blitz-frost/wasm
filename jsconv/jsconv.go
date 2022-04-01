@@ -1,4 +1,5 @@
 // Package jsconv provides conversion between Go and JS values.
+//TODO currently broken because the js.Wrapper interface was removed
 package jsconv
 
 import (
@@ -18,7 +19,7 @@ var stringType = reflect.TypeOf("")
 var (
 	directSlice     = reflect.TypeOf([]interface{}(nil))
 	directMap       = reflect.TypeOf(map[string]interface{}(nil))
-	directInterface = reflect.TypeOf((*js.Wrapper)(nil)).Elem()
+	directInterface = reflect.TypeOf((*Wrapper)(nil)).Elem()
 
 	directTypes = map[reflect.Type]struct{}{
 		reflect.TypeOf(false):      struct{}{},
@@ -43,6 +44,10 @@ var (
 
 // checking simple kinds with a map is faster than trying CanConvert on all direct types
 var indirectKinds = make(map[reflect.Kind]reflect.Type)
+
+type Wrapper interface {
+	JSValue() js.Value
+}
 
 func init() {
 	for typ, _ := range directTypes {
@@ -96,7 +101,7 @@ var jsValueType = reflect.TypeOf(JSValue{})
 
 // Keys returns all the keys in obj.
 // Returns nil if obj is not a JS object.
-func Keys(obj js.Wrapper) []string {
+func Keys(obj Wrapper) []string {
 	val := obj.JSValue()
 	if val.Type() != js.TypeObject {
 		return nil
@@ -114,7 +119,7 @@ func Keys(obj js.Wrapper) []string {
 
 // To converts the source js value, storing it into the destination go pointer.
 // dst must be a pointer to an appropriate type.
-func To(dst interface{}, src js.Wrapper) error {
+func To(dst interface{}, src Wrapper) error {
 	if dst == nil {
 		return errors.New("nil destination")
 	}
@@ -129,7 +134,7 @@ func To(dst interface{}, src js.Wrapper) error {
 
 // ToValue is the underling implementation of To.
 // dst must be a settable destination value or a pointer to an appropriate value.
-func ToValue(dst reflect.Value, src js.Wrapper) error {
+func ToValue(dst reflect.Value, src Wrapper) error {
 	srcVal := src.JSValue()
 
 	v := reflect.Indirect(dst)

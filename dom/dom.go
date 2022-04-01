@@ -2,7 +2,6 @@ package dom
 
 import (
 	"errors"
-	"fmt"
 	"net/url"
 	"syscall/js"
 )
@@ -48,6 +47,8 @@ func HandleRemove(event EventName, h Handler) {
 	doc.Call("removeEventListener", string(event), h.f)
 }
 
+/*
+//TODO update along with jsconv package
 // Log wraps the standard package fmt.Println.
 // If a is a syscall/js.Wrapper (is or can convert itself to a JS value), then it will be passed to the browser console for formatting.
 func Log(a interface{}) {
@@ -57,3 +58,4 @@ func Log(a interface{}) {
 	}
 	fmt.Println(a)
 }
+*/
