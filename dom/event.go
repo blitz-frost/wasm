@@ -69,7 +69,7 @@ type Handler struct {
 // MakeHandler wraps a Go function to be used as a DOM event handler.
 // fn must be non blocking, otherwise the application will deadlock.
 // Notably, http requests block.
-func MakeHandler(fn func(e Event)) Handler {
+func MakeHandler(fn func(Event)) Handler {
 	return Handler{js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		fn(Event{args[0]})
 		return nil

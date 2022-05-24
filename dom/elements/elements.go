@@ -5,10 +5,11 @@ import (
 	"syscall/js"
 
 	"github.com/blitz-frost/wasm/dom"
+	"github.com/blitz-frost/wasm/media"
 )
 
-var window = js.Global()
-var doc = window.Get("document")
+var global = js.Global()
+var doc = global.Get("document")
 
 type Element = dom.Element
 
@@ -73,8 +74,10 @@ type Option struct {
 	Element
 }
 
-func MakeOption() Option {
-	return Option{Element{doc.Call("createElement", "option")}}
+func MakeOption(val string) Option {
+	x := Option{Element{doc.Call("createElement", "option")}}
+	x.ValueSet(val)
+	return x
 }
 
 func (x Option) Value() string {
@@ -143,8 +146,10 @@ type Select struct {
 	Element
 }
 
-func MakeSelect() Select {
-	return Select{Element{doc.Call("createElement", "select")}}
+func MakeSelect(opt ...Option) Select {
+	x := Select{Element{doc.Call("createElement", "select")}}
+	x.Append(opt...)
+	return x
 }
 
 func (x Select) Add(pos int, opt ...Option) {
@@ -245,4 +250,46 @@ func (x TextArea) Text() string {
 
 func (x TextArea) TextSet(s string) {
 	x.Set("value", s)
+}
+
+type Video struct {
+	Element
+}
+
+func MakeVideo() Video {
+	return Video{Element{doc.Call("createElement", "video")}}
+}
+
+func (x Video) AutoPlay() bool {
+	return x.Get("autoplay").Bool()
+}
+
+func (x Video) AutoPlaySet(v bool) {
+	x.Set("autoplay", v)
+}
+
+func (x Video) Muted() bool {
+	return x.Get("muted").Bool()
+}
+
+func (x Video) MutedSet(v bool) {
+	x.Set("muted", v)
+}
+
+func (x Video) SourceStream() media.Stream {
+	v := x.Get("srcObject")
+	return media.AsStream(v)
+}
+
+func (x Video) SourceStreamSet(stream media.Stream) {
+	v := stream.Js()
+	x.Set("srcObject", v)
+}
+
+func (x Video) SourceUrl() string {
+	return x.Get("src").String()
+}
+
+func (x Video) SourceUrlSet(url string) {
+	x.Set("src", url)
 }
