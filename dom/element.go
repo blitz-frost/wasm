@@ -71,7 +71,11 @@ func (x Element) HandleRemove(event EventName, h Handler) {
 }
 
 func (x Element) Height() uint16 {
-	return uint16(x.Get("offsetHeight").Float())
+	return uint16(x.Get("offsetHeight").Int())
+}
+
+func (x Element) HeightVisible() uint16 {
+	return uint16(x.Get("clientHeight").Int())
 }
 
 func (x Element) Id() string {
@@ -151,6 +155,10 @@ func (x Element) Super() Element {
 	return Element{(x.Get("parentElement"))}
 }
 
+func (x Element) TabIndexSet(i int) {
+	x.Set("tabIndex", i)
+}
+
 // Text returns the inner HTML text node value. Panics if x does not contain a text node.
 func (x Element) Text() string {
 	return x.Get("innerHTML").String()
@@ -162,7 +170,11 @@ func (x Element) TextSet(s string) {
 }
 
 func (x Element) Width() uint16 {
-	return uint16(x.Get("offsetWidth").Float())
+	return uint16(x.Get("offsetWidth").Int())
+}
+
+func (x Element) WidthVisible() uint16 {
+	return uint16(x.Get("clientWidth").Int())
 }
 
 func (x Element) Base() Element {

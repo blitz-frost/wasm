@@ -15,8 +15,13 @@ const (
 	EventFocusOut             = "focusout"
 	EventInput                = "input"
 	EventKeyDown              = "keydown"
+	EventKeyUp                = "keyup"
 	EventMouseDown            = "mousedown"
+	EventMouseEnter           = "mouseenter"
+	EventMouseLeave           = "mouseleave"
+	EventMouseMove            = "mousemove"
 	EventMouseUp              = "mouseup"
+	EventMouseWheel           = "mousewheel"
 )
 
 // An Event wraps a JS event object
@@ -53,12 +58,32 @@ type MouseEvent struct {
 	Event
 }
 
-func (x MouseEvent) X() uint16 {
-	return uint16(x.Get("pageX").Float())
+func (x MouseEvent) Button() byte {
+	return byte(x.Get("button").Int())
 }
 
-func (x MouseEvent) Y() uint16 {
-	return uint16(x.Get("pageY").Float())
+func (x MouseEvent) XAbs() uint16 {
+	return uint16(x.Get("pageX").Int())
+}
+
+func (x MouseEvent) YAbs() uint16 {
+	return uint16(x.Get("pageY").Int())
+}
+
+func (x MouseEvent) XRel() uint16 {
+	return uint16(x.Get("offsetX").Int())
+}
+
+func (x MouseEvent) YRel() uint16 {
+	return uint16(x.Get("offsetY").Int())
+}
+
+type WheelEvent struct {
+	Event
+}
+
+func (x WheelEvent) Y() int8 {
+	return int8(x.Get("deltaY").Float())
 }
 
 // A Handler wraps a JS event handler function.

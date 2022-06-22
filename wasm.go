@@ -7,11 +7,13 @@ import (
 )
 
 var (
-	array       = js.Global().Get("Uint8Array")
-	console     = js.Global().Get("console")
-	catchCall   = js.Global().Get("catchCall")
-	catchInvoke = js.Global().Get("catchInvoke")
-	object      = js.Global().Get("Object")
+	global = js.Global()
+
+	array       = global.Get("Uint8Array")
+	console     = global.Get("console")
+	catchCall   = global.Get("catchCall")
+	catchInvoke = global.Get("catchInvoke")
+	object      = global.Get("Object")
 )
 
 // Bytes wraps a JS Uint8Array.
@@ -54,6 +56,50 @@ func (x Bytes) Length() int {
 func (x Bytes) Slice(start, end int) Bytes {
 	v := x.v.Call("subarray", start, end)
 	return Bytes{v}
+}
+
+// A Ticker represents a JS Interval. Useful to synchronize with the main JS thread.
+type Ticker struct {
+	v js.Value
+	f js.Func
+}
+
+func MakeTicker(ms uint64, fn func()) Ticker {
+	f := js.FuncOf(func(this js.Value, args []js.Value) any {
+		fn()
+		return nil
+	})
+	return Ticker{
+		v: global.Call("setInterval", f, ms),
+		f: f,
+	}
+}
+
+func (x Ticker) Stop() {
+	global.Call("clearInterval", x.v)
+	x.f.Release()
+}
+
+// A Timer represents a JS Timeout. Useful to synchronize with the main JS thread.
+type Timer struct {
+	v js.Value
+	f js.Func
+}
+
+func MakeTimer(ms uint64, fn func()) Timer {
+	f := js.FuncOf(func(this js.Value, args []js.Value) any {
+		fn()
+		return nil
+	})
+	return Timer{
+		v: global.Call("setTimeout", f, ms),
+		f: f,
+	}
+}
+
+func (x Timer) Stop() {
+	global.Call("clearTimeout", x.v)
+	x.f.Release()
 }
 
 // Await synchronizes the input promise.
