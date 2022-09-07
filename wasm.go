@@ -3,6 +3,7 @@ package wasm
 import (
 	"errors"
 
+	"github.com/blitz-frost/io"
 	"syscall/js"
 )
 
@@ -16,46 +17,113 @@ var (
 	object      = global.Get("Object")
 )
 
-// Bytes wraps a JS Uint8Array.
+// Bytes mimics []byte using a JS Uint8Array as the underlying array.
 type Bytes struct {
-	v js.Value
+	v        js.Value
+	length   int
+	capacity int
 }
 
-func BytesFrom(b []byte) Bytes {
-	x := MakeBytes(len(b))
+func BytesOf(b []byte) Bytes {
+	x := MakeBytes(len(b), cap(b))
 	x.CopyFrom(b)
 	return x
 }
 
-func MakeBytes(n int) Bytes {
-	v := array.New(n)
-	return Bytes{v}
+func MakeBytes(length, capacity int) Bytes {
+	v := array.New(capacity)
+	return Bytes{v, length, capacity}
 }
 
 func View(arrayBuffer js.Value) Bytes {
 	v := array.New(arrayBuffer)
-	return Bytes{v}
+	n := v.Length()
+	return Bytes{v, n, n}
 }
 
-func (x Bytes) CopyFrom(b []byte) {
-	js.CopyBytesToJS(x.v, b)
+func (x Bytes) Append(b []byte) Bytes {
+	length := len(b) + x.length
+	if length <= x.capacity {
+		// have room in current array
+		v := x.v.Call("subarray", x.length, length)
+		js.CopyBytesToJS(v, b)
+		x.length = length
+		return x
+	}
+
+	// not enough room; allocate new array and copy everything into it
+	v := array.New(length)
+	v.Call("set", x.v)
+
+	sub := x.v.Call("subarray", x.length)
+	js.CopyBytesToJS(sub, b)
+
+	return Bytes{v, length, length}
 }
 
-func (x Bytes) CopyTo(b []byte) {
-	js.CopyBytesToGo(b, x.v)
+func (x Bytes) Cap() int {
+	return x.capacity
+}
+
+func (x Bytes) CopyFrom(b []byte) int {
+	if len(b) > x.length {
+		b = b[:x.length]
+	}
+	return js.CopyBytesToJS(x.v, b)
+}
+
+func (x Bytes) CopyTo(b []byte) int {
+	if len(b) > x.length {
+		b = b[:x.length]
+	}
+	return js.CopyBytesToGo(b, x.v)
 }
 
 func (x Bytes) Js() js.Value {
-	return x.v
+	return x.v.Call("subarray", 0, x.length)
 }
 
-func (x Bytes) Length() int {
-	return x.v.Length()
+func (x Bytes) Len() int {
+	return x.length
 }
 
 func (x Bytes) Slice(start, end int) Bytes {
-	v := x.v.Call("subarray", start, end)
-	return Bytes{v}
+	v := x.v.Call("subarray", start)
+	return Bytes{v, end - start, x.capacity - start}
+}
+
+// BytesReader wraps a Bytes object to function as an [io.Reader].
+// [Src] must be a valid Bytes value. It can be retrieved or exchanged when done, and will always be the remaining subslice of the initial data.
+type BytesReader struct {
+	Src Bytes
+}
+
+func (x *BytesReader) Close() error {
+	return nil
+}
+
+func (x *BytesReader) Read(b []byte) (int, error) {
+	n := x.Src.CopyTo(b)
+	x.Src = x.Src.Slice(n, x.Src.Len())
+	if n < len(b) {
+		return n, io.EOF
+	}
+	return n, nil
+}
+
+// BytesWriter wraps a Bytes object to function as an [io.Writer].
+// [Dst] must be a valid Bytes value. It may be freely retrieved or exchanged when done writing to the current value.
+type BytesWriter struct {
+	Dst Bytes
+}
+
+func (x *BytesWriter) Close() error {
+	return nil
+}
+
+func (x *BytesWriter) Write(b []byte) (int, error) {
+	x.Dst = x.Dst.Append(b)
+	return len(b), nil
 }
 
 // A Ticker represents a JS Interval. Useful to synchronize with the main JS thread.
@@ -141,6 +209,17 @@ func Await(promise js.Value) (js.Value, error) {
 func Call(obj js.Value, method string, args ...any) (js.Value, error) {
 	r := catchCall.Invoke(obj, method, args)
 	return catch(r)
+}
+
+func Copy(dst Bytes, src Bytes) {
+	// clip overflow
+	if src.length > dst.length {
+		src.length = dst.length
+	}
+
+	v := src.v.Call("subarray", 0, src.length)
+
+	dst.v.Call("set", v)
 }
 
 // Invoke exectues a function call, catching a thrown exception and returning it as a Go error.

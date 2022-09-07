@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/blitz-frost/io"
+	"github.com/blitz-frost/io/msg"
 	"github.com/blitz-frost/wasm"
 )
 
@@ -62,7 +63,7 @@ func newBuffer(v js.Value) *Buffer {
 
 func (x *Buffer) Write(b []byte) error {
 	if len(b) > x.n {
-		x.array = wasm.MakeBytes(len(b))
+		x.array = wasm.MakeBytes(len(b), len(b))
 	}
 
 	slice := x.array.Slice(0, len(b))
@@ -117,7 +118,7 @@ type Recorder struct {
 
 	onError func(error) // also used for dst.Write errors
 
-	dst io.Writer
+	dst msg.ReaderTaker
 	buf []byte // receive recorded bytes without repeated allocation
 
 	active bool
@@ -149,7 +150,7 @@ func NewRecorder(s Stream, t Type, audioBitRate, videoBitRate float64) *Recorder
 	x := Recorder{
 		v:       v,
 		onError: func(error) {},
-		dst:     io.VoidWriter{},
+		dst:     msg.Void{},
 		stop:    make(chan struct{}),
 	}
 
@@ -164,7 +165,7 @@ func NewRecorder(s Stream, t Type, audioBitRate, videoBitRate float64) *Recorder
 	x.onArray = js.FuncOf(func(this js.Value, args []js.Value) any {
 		buf := wasm.View(args[0])
 
-		n := buf.Length()
+		n := buf.Len()
 		// sometimes we get empty arrays
 		if n == 0 {
 			return nil
@@ -175,7 +176,7 @@ func NewRecorder(s Stream, t Type, audioBitRate, videoBitRate float64) *Recorder
 		b := x.buf[:n]
 
 		buf.CopyTo(b)
-		if err := x.dst.Write(b); err != nil {
+		if err := x.dst.ReaderTake((*io.BytesReader)(&b)); err != nil {
 			x.onError(err)
 		}
 
@@ -194,12 +195,9 @@ func NewRecorder(s Stream, t Type, audioBitRate, videoBitRate float64) *Recorder
 	return &x
 }
 
-func (x *Recorder) Chain(w io.Writer) {
-	x.dst = w
-}
-
-func (x Recorder) ChainGet() io.Writer {
-	return x.dst
+func (x *Recorder) ReaderChain(dst msg.ReaderTaker) error {
+	x.dst = dst
+	return nil
 }
 
 func (x *Recorder) OnError(fn func(error)) {
@@ -219,7 +217,7 @@ func (x *Recorder) Pause() {
 	x.v.Call("pause")
 }
 
-func (x Recorder) Release() {
+func (x *Recorder) Release() {
 	x.onArray.Release()
 	x.onData.Release()
 	x.onErrorJs.Release()
@@ -267,7 +265,7 @@ func (x *Recorder) Stop() {
 	x.v.Call("stop")
 }
 
-func (x Recorder) listen(d time.Duration) {
+func (x *Recorder) listen(d time.Duration) {
 	t := time.NewTicker(d)
 	for {
 		select {
@@ -374,7 +372,7 @@ func NewSource() *Source {
 	}
 }
 
-func (x Source) NewBuffer(t Type) *Buffer {
+func (x *Source) NewBuffer(t Type) *Buffer {
 	s := typeString(t)
 	v := x.v.Call("addSourceBuffer", s)
 	return newBuffer(v)
@@ -407,14 +405,14 @@ func (x *Source) OnOpen(fn func()) {
 	x.v.Set("onsourceopen", x.onOpen)
 }
 
-func (x Source) Release() {
+func (x *Source) Release() {
 	x.onClose.Release()
 	x.onEnd.Release()
 	x.onOpen.Release()
 }
 
 // Url returns a browser URL to the Source object.
-func (x Source) Url() string {
+func (x *Source) Url() string {
 	return js.Global().Get("URL").Call("createObjectURL", x.v).String()
 }
 
