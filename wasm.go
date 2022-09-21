@@ -55,7 +55,7 @@ func (x Bytes) Append(b []byte) Bytes {
 	v := array.New(length)
 	v.Call("set", x.v)
 
-	sub := x.v.Call("subarray", x.length)
+	sub := v.Call("subarray", x.length)
 	js.CopyBytesToJS(sub, b)
 
 	return Bytes{v, length, length}
