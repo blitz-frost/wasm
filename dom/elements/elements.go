@@ -46,6 +46,40 @@ func (x Cell) Row() Row {
 	return Row{Element{x.Get("parentElement")}}
 }
 
+type Checkbox struct {
+	Element
+}
+
+func MakeCheckbox() Checkbox {
+	e := Element{doc.Call("createElement", "input")}
+	e.Call("setAttribute", "type", "checkbox")
+	return Checkbox{e}
+}
+
+func (x Checkbox) Checked() bool {
+	return x.Get("checked").Bool()
+}
+
+func (x Checkbox) CheckedSet(v bool) {
+	x.Set("checked", v)
+}
+
+func (x Checkbox) Default() bool {
+	return x.Get("defaultChecked").Bool()
+}
+
+func (x Checkbox) DefaultSet(v bool) {
+	x.Set("defaultChecked", v)
+}
+
+func (x Checkbox) Explicit() bool {
+	return !x.Get("indeterminate").Bool()
+}
+
+func (x Checkbox) ExplicitSet(v bool) {
+	x.Set("indeterminate", !v)
+}
+
 type Div struct {
 	Element
 }
