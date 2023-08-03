@@ -11,6 +11,7 @@ const (
 	EventChange               = "change"
 	EventClick                = "click"
 	EventClickRight           = "contextmenu"
+	EventFocus                = "focus"
 	EventFocusIn              = "focusin"
 	EventFocusOut             = "focusout"
 	EventInput                = "input"
