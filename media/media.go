@@ -63,7 +63,7 @@ func newBuffer(v js.Value) *Buffer {
 
 func (x *Buffer) Write(b []byte) error {
 	if len(b) > x.n {
-		x.array = wasm.MakeBytes(len(b), len(b))
+		x.array = wasm.BytesMake(len(b), len(b))
 	}
 
 	slice := x.array.Slice(0, len(b))
