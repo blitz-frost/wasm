@@ -13,13 +13,13 @@ func CaretMove(pos int) {
 	rng.Call("setStart", node, pos)
 }
 
-// InsertText inserts the given string at the current cursor position.
-func InsertText(str string) {
+// TextInsert inserts the given string at the current cursor position.
+func TextInsert(str string) {
 	doc.Call("execCommand", "insertText", false, str)
 }
 
-// SelectText selects text inside the current active element.
-func SelectText(start, end int) {
+// TextSelect selects text inside the current active element.
+func TextSelect(start, end int) {
 	sel := window.Call("getSelection")
 	if sel.Get("rangeCount").Int() == 0 {
 		return

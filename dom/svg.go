@@ -10,7 +10,7 @@ type Svg struct {
 	Element
 }
 
-func MakeSvg() Svg {
+func SvgMake() Svg {
 	return Svg{Element{doc.Call("createElementNS", "http://www.w3.org/2000/svg", "svg")}}
 }
 

@@ -3,8 +3,9 @@ package wasm
 import (
 	"errors"
 
-	"github.com/blitz-frost/io"
 	"syscall/js"
+
+	"github.com/blitz-frost/io"
 )
 
 var (
@@ -25,12 +26,12 @@ type Bytes struct {
 }
 
 func BytesOf(b []byte) Bytes {
-	x := MakeBytes(len(b), cap(b))
+	x := BytesMake(len(b), cap(b))
 	x.CopyFrom(b)
 	return x
 }
 
-func MakeBytes(length, capacity int) Bytes {
+func BytesMake(length, capacity int) Bytes {
 	v := array.New(capacity)
 	return Bytes{v, length, capacity}
 }
@@ -128,44 +129,74 @@ func (x *BytesWriter) Write(b []byte) (int, error) {
 
 // A Ticker represents a JS Interval. Useful to synchronize with the main JS thread.
 type Ticker struct {
-	v js.Value
-	f js.Func
+	v    js.Value
+	f    js.Func
+	done bool
 }
 
-func MakeTicker(ms uint64, fn func()) Ticker {
-	f := js.FuncOf(func(this js.Value, args []js.Value) any {
+func TickerMake(ms uint64, fn func()) Ticker {
+	var o Ticker
+
+	o.f = js.FuncOf(func(this js.Value, args []js.Value) any {
+		if o.done {
+			// if the event has already been queued in the event loop by the time Stop() is called, the JS runtime will still resolve it
+			return nil
+		}
+
 		fn()
 		return nil
 	})
-	return Ticker{
-		v: global.Call("setInterval", f, ms),
-		f: f,
-	}
+
+	o.v = global.Call("setInterval", o.f, ms)
+	return o
 }
 
+// Stop disables the Ticker.
+// Must be called from event loop.
 func (x Ticker) Stop() {
+	if x.done {
+		return
+	}
+
 	global.Call("clearInterval", x.v)
+	x.done = true
 	x.f.Release()
 }
 
 // A Timer represents a JS Timeout. Useful to synchronize with the main JS thread.
 type Timer struct {
-	v js.Value
-	f js.Func
+	v    js.Value
+	f    js.Func
+	done bool
 }
 
-func MakeTimer(ms uint64, fn func()) Timer {
-	f := js.FuncOf(func(this js.Value, args []js.Value) any {
+func TimerMake(ms uint64, fn func()) Timer {
+	var o Timer
+
+	o.f = js.FuncOf(func(this js.Value, args []js.Value) any {
+		if o.done {
+			return nil
+		}
+
 		fn()
+
+		o.done = true
+		o.f.Release()
 		return nil
 	})
-	return Timer{
-		v: global.Call("setTimeout", f, ms),
-		f: f,
-	}
+
+	o.v = global.Call("setTimeout", o.f, ms)
+
+	return o
 }
 
+// Stop prevents the Timer from firing, if it has not already done so.
+// Must be called from event loop.
 func (x Timer) Stop() {
+	if x.done {
+		return
+	}
+
 	global.Call("clearTimeout", x.v)
 	x.f.Release()
 }

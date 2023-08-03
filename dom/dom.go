@@ -13,9 +13,9 @@ var (
 	location = window.Get("location")
 )
 
-// GetId returns the element with the given ID in the document.
+// ElementById returns the element with the given ID in the document.
 // Returns an error if the ID doesn't exist.
-func GetId(id string) (Element, error) {
+func ElementById(id string) (Element, error) {
 	elem := doc.Call("getElementById", id)
 	if elem.IsNull() {
 		return Element{}, errors.New(id + " not found")
@@ -23,8 +23,8 @@ func GetId(id string) (Element, error) {
 	return Element{elem}, nil
 }
 
-// GetKind returns all elements of the specified kind (tag).
-func GetKind(kind ElementKind) []Element {
+// ElementsByKind returns all elements of the specified kind (tag).
+func ElementsByKind(kind ElementKind) []Element {
 	elems := doc.Call("getElementsByTagName", string(kind))
 	o := make([]Element, elems.Length())
 	for i := range o {
@@ -33,18 +33,29 @@ func GetKind(kind ElementKind) []Element {
 	return o
 }
 
-func GetUrl() url.URL {
+// Handle registers a document event listener.
+func Handle(event EventName, h Handler) {
+	doc.Call("addEventListener", string(event), h.f)
+}
+
+// HandleRemove deregisters a document event listener.
+func HandleRemove(event EventName, h Handler) {
+	doc.Call("removeEventListener", string(event), h.f)
+}
+
+// Url returns the current navigation URL.
+func Url() url.URL {
 	s := location.Get("href").String()
 	u, _ := url.Parse(s)
 	return *u
 }
 
-func Handle(event EventName, h Handler) {
-	doc.Call("addEventListener", string(event), h.f)
+func WindowHandle(event EventName, h Handler) {
+	window.Call("addEventListener", string(event), h.f)
 }
 
-func HandleRemove(event EventName, h Handler) {
-	doc.Call("removeEventListener", string(event), h.f)
+func WindowHandleRemove(event EventName, h Handler) {
+	window.Call("removeEventListener", string(event), h.f)
 }
 
 /*

@@ -34,10 +34,6 @@ func (x Element) Append(e ...Base) {
 	}
 }
 
-func (x Element) Blur() {
-	x.Call("blur")
-}
-
 func (x Element) Class() string {
 	return x.Get("className").String()
 }
@@ -56,8 +52,26 @@ func (x Element) EditableSet(t bool) {
 	x.Set("contentEditable", t)
 }
 
-func (x Element) Focus() {
-	x.Call("focus")
+func (x Element) Focus() bool {
+	elemJs := doc.Get("activeElement")
+	if elemJs.IsNull() {
+		return false
+	}
+
+	elem := Element{elemJs}
+	if elem.Id() == x.Id() {
+		return true
+	}
+
+	return false
+}
+
+func (x Element) FocusSet(v bool) {
+	if v {
+		x.Call("focus")
+	} else {
+		x.Call("blur")
+	}
 }
 
 // Handle subscribes the given Handler to the specified event.
