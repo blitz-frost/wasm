@@ -13,8 +13,9 @@ var (
 
 	array       = global.Get("Uint8Array")
 	console     = global.Get("console")
-	catchCall   = global.Get("catchCall")
-	catchInvoke = global.Get("catchInvoke")
+	catchCall   = global.Get("goCatchCall")
+	catchInvoke = global.Get("goCatchInvoke")
+	catchNew    = global.Get("goCatchNew")
 	object      = global.Get("Object")
 )
 
@@ -273,6 +274,11 @@ func Keys(obj js.Value) []string {
 	}
 
 	return o
+}
+
+func New(class js.Value, args ...any) (js.Value, error) {
+	r := catchNew.Invoke(class, args)
+	return catch(r)
 }
 
 // Print uses the console.log function to print JS values.

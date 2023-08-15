@@ -4,22 +4,6 @@
 
 "use strict";
 
-function catchCall(obj, method, args) {
-	try {
-		return [false, obj[method](...args)];
-	} catch(e) {
-		return [true, e];
-	}
-}
-
-function catchInvoke(fn, args) {
-	try {
-		return [false, fn(...args)];
-	} catch(e) {
-		return [true, e];
-	}
-}
-
 (() => {
 	const enosys = () => {
 		const err = new Error("not implemented");
