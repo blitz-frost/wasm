@@ -445,6 +445,10 @@ func AsTrack(v js.Value) Track {
 	return Track{v}
 }
 
+func (x Track) Kind() Kind {
+	return Kind(x.v.Get("kind").String())
+}
+
 func (x Track) Js() js.Value {
 	return x.v
 }

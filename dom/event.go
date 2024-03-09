@@ -47,6 +47,10 @@ type KeyboardEvent struct {
 	Event
 }
 
+func (x KeyboardEvent) Code() string {
+	return x.Get("code").String()
+}
+
 // Ctrl returns true if the Ctrl key is being pressed.
 func (x KeyboardEvent) Ctrl() bool {
 	return x.Get("ctrlKey").Bool()
