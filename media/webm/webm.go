@@ -9,20 +9,20 @@ import (
 
 const (
 	Opus   Audio = "opus"
-	Vorbis       = "vorbis"
+	Vorbis Audio = "vorbis"
 )
 
 const (
 	Depth8  BitDepth = "08"
-	Depth10          = "10"
-	Depth12          = "12"
+	Depth10 BitDepth = "10"
+	Depth12 BitDepth = "12"
 )
 
 const (
 	Profile8Bit420 Profile = "00"
-	Profile8Bit            = "01"
-	ProfileAny420          = "02" // 8, 10, 12 bit depth
-	ProfuleAny             = "03"
+	Profile8Bit    Profile = "01"
+	ProfileAny420  Profile = "02" // 8, 10, 12 bit depth
+	ProfuleAny     Profile = "03"
 )
 
 type Audio string

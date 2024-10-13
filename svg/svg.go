@@ -3,55 +3,48 @@ package svg
 
 import (
 	"strconv"
-	"syscall/js"
 
+	"github.com/blitz-frost/wasm"
 	"github.com/blitz-frost/wasm/css"
 )
 
 const xmlns = "http://www.w3.org/2000/svg"
 
-var doc js.Value = js.Global().Get("document")
-
-type Element interface {
-	JSValue() js.Value
-}
+var doc = wasm.Object(wasm.Global.Get("document"))
 
 func fmtLength(val uint16, unit css.Unit) string {
 	return strconv.FormatUint(uint64(val), 10) + string(unit)
 }
 
-type Line struct {
-	Value js.Value
-}
+type Element wasm.Value
+
+type Line Element
 
 func MakeLine() Line {
-	return Line{doc.Call("createElementNS", xmlns, "line")}
+	v := doc.CallRaw("createElementNS", xmlns, "line")
+	return Line(v)
 }
 
 func (x Line) X0(val uint16, unit css.Unit) {
-	x.Value.Call("setAttribute", "x1", fmtLength(val, unit))
+	wasm.Value(x).Call("setAttribute", "x1", fmtLength(val, unit))
 }
 
 func (x Line) X1(val uint16, unit css.Unit) {
-	x.Value.Call("setAttribute", "x2", fmtLength(val, unit))
+	wasm.Value(x).Call("setAttribute", "x2", fmtLength(val, unit))
 }
 
 func (x Line) Y0(val uint16, unit css.Unit) {
-	x.Value.Call("setAttribute", "y1", fmtLength(val, unit))
+	wasm.Value(x).Call("setAttribute", "y1", fmtLength(val, unit))
 }
 
 func (x Line) Y1(val uint16, unit css.Unit) {
-	x.Value.Call("setAttribute", "y2", fmtLength(val, unit))
+	wasm.Value(x).Call("setAttribute", "y2", fmtLength(val, unit))
 }
 
 func (x Line) Color(color css.Color) {
-	x.Value.Call("setAttribute", "stroke", string(color))
+	wasm.Value(x).Call("setAttribute", "stroke", string(color))
 }
 
 func (x Line) Width(val uint16, unit css.Unit) {
-	x.Value.Call("setAttribute", "stroke-width", fmtLength(val, unit))
-}
-
-func (x Line) JSValue() js.Value {
-	return x.Value
+	wasm.Value(x).Call("setAttribute", "stroke-width", fmtLength(val, unit))
 }

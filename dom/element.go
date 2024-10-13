@@ -2,8 +2,7 @@
 package dom
 
 import (
-	"syscall/js"
-
+	"github.com/blitz-frost/wasm"
 	"github.com/blitz-frost/wasm/css"
 )
 
@@ -16,7 +15,7 @@ type Base interface {
 // A Base represents a JS DOM element and forms the basis of this package.
 // It wraps js.Value and gives access to all its funcionality.
 type Element struct {
-	js.Value // underlying JS object
+	wasm.Value // underlying JS object
 }
 
 // Add adds the given elements as subelements, at the given position.
@@ -74,14 +73,14 @@ func (x Element) FocusSet(v bool) {
 	}
 }
 
-// Handle subscribes the given Handler to the specified event.
-func (x Element) Handle(event EventName, h Handler) {
-	x.Call("addEventListener", string(event), h.f)
+// Handle subscribes the given HandlerFunction to the specified event.
+func (x Element) Handle(event EventName, h HandlerFunction) {
+	x.Call("addEventListener", string(event), wasm.Value(h))
 }
 
 // HandleRemove unsubscribes the given Handler from the specified event.
-func (x Element) HandleRemove(event EventName, h Handler) {
-	x.Call("removeEventListener", string(event), h.f)
+func (x Element) HandleRemove(event EventName, h HandlerFunction) {
+	x.Call("removeEventListener", string(event), wasm.Value(h))
 }
 
 func (x Element) Height() uint16 {

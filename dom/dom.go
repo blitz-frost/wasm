@@ -3,20 +3,19 @@ package dom
 import (
 	"errors"
 	"net/url"
-	"syscall/js"
+
+	"github.com/blitz-frost/wasm"
 )
 
 var (
-	window   = js.Global()
-	console  = window.Get("console")
-	doc      = window.Get("document")
-	location = window.Get("location")
+	doc      = wasm.Object(wasm.Global.Get("document"))
+	location = wasm.Object(wasm.Global.Get("location"))
 )
 
 // ElementById returns the element with the given ID in the document.
 // Returns an error if the ID doesn't exist.
 func ElementById(id string) (Element, error) {
-	elem := doc.Call("getElementById", id)
+	elem := doc.CallRaw("getElementById", id)
 	if elem.IsNull() {
 		return Element{}, errors.New(id + " not found")
 	}
@@ -25,7 +24,7 @@ func ElementById(id string) (Element, error) {
 
 // ElementsByKind returns all elements of the specified kind (tag).
 func ElementsByKind(kind ElementKind) []Element {
-	elems := doc.Call("getElementsByTagName", string(kind))
+	elems := doc.CallRaw("getElementsByTagName", string(kind))
 	o := make([]Element, elems.Length())
 	for i := range o {
 		o[i] = Element{elems.Index(i)}
@@ -34,13 +33,13 @@ func ElementsByKind(kind ElementKind) []Element {
 }
 
 // Handle registers a document event listener.
-func Handle(event EventName, h Handler) {
-	doc.Call("addEventListener", string(event), h.f)
+func Handle(event EventName, h HandlerFunction) {
+	doc.CallRaw("addEventListener", string(event), wasm.Value(h))
 }
 
 // HandleRemove deregisters a document event listener.
-func HandleRemove(event EventName, h Handler) {
-	doc.Call("removeEventListener", string(event), h.f)
+func HandleRemove(event EventName, h HandlerFunction) {
+	doc.CallRaw("removeEventListener", string(event), wasm.Value(h))
 }
 
 // Url returns the current navigation URL.
@@ -50,23 +49,10 @@ func Url() url.URL {
 	return *u
 }
 
-func WindowHandle(event EventName, h Handler) {
-	window.Call("addEventListener", string(event), h.f)
+func WindowHandle(event EventName, h HandlerFunction) {
+	wasm.Global.CallRaw("addEventListener", string(event), wasm.Value(h))
 }
 
-func WindowHandleRemove(event EventName, h Handler) {
-	window.Call("removeEventListener", string(event), h.f)
+func WindowHandleRemove(event EventName, h HandlerFunction) {
+	wasm.Global.CallRaw("removeEventListener", string(event), wasm.Value(h))
 }
-
-/*
-//TODO update along with jsconv package
-// Log wraps the standard package fmt.Println.
-// If a is a syscall/js.Wrapper (is or can convert itself to a JS value), then it will be passed to the browser console for formatting.
-func Log(a interface{}) {
-	if jsw, ok := a.(js.Wrapper); ok {
-		console.Call("log", jsw.JSValue())
-		return
-	}
-	fmt.Println(a)
-}
-*/

@@ -1,7 +1,7 @@
 package dom
 
 import (
-	"syscall/js"
+	"github.com/blitz-frost/wasm"
 )
 
 type EventName string
@@ -28,15 +28,15 @@ const (
 
 // An Event wraps a JS event object
 type Event struct {
-	js.Value
+	wasm.Object
 }
 
 func (x Event) Cancel() {
-	x.Call("stopPropagation")
+	x.CallRaw("stopPropagation")
 }
 
 func (x Event) CancelDefault() {
-	x.Call("preventDefault")
+	x.CallRaw("preventDefault")
 }
 
 func (x Event) Target() Element {
@@ -92,22 +92,31 @@ func (x WheelEvent) Y() int8 {
 	return int8(x.Get("deltaY").Float())
 }
 
-// A Handler wraps a JS event handler function.
-type Handler struct {
-	f js.Func
+type Handler interface {
+	Handle(Event)
 }
 
-// MakeHandler wraps a Go function to be used as a DOM event handler.
-// fn must be non blocking, otherwise the application will deadlock.
-// Notably, http requests block.
-func HandlerMake(fn func(Event)) Handler {
-	return Handler{js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		fn(Event{args[0]})
-		return nil
-	})}
+type HandlerFunc func(Event)
+
+func (x HandlerFunc) Exec(this wasm.Value, args []wasm.Value) (wasm.Any, error) {
+	e := Event{wasm.Object(args[0])}
+	x(e)
+	return nil, nil
 }
 
-// Delete releases the underlying JS function.
-func (x Handler) Delete() {
-	x.f.Release()
+func (x HandlerFunc) Handle(e Event) {
+	x(e)
 }
+
+type HandlerInterface struct {
+	Handler
+}
+
+func (x HandlerInterface) Exec(this wasm.Value, args []wasm.Value) (wasm.Any, error) {
+	e := Event{wasm.Object(args[0])}
+	x.Handle(e)
+	return nil, nil
+}
+
+// A HandlerFunction is a Function(Event).
+type HandlerFunction wasm.Function

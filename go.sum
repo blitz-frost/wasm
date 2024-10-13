@@ -1,4 +1,8 @@
+github.com/blitz-frost/conv v0.3.1 h1:AhDMpdNAsYQncaC2NohgTA0JfKJHJK4Q0SPyC4C9gGQ=
+github.com/blitz-frost/conv v0.3.1/go.mod h1:YWqYF2Eu7/d0FN19gwAJN8Smi36D8dBrJTKQTasa2rQ=
 github.com/blitz-frost/io v0.2.5 h1:yK+KcLlK7AV+7S423UoE9C3F1DIj0AT4i+tNHTFWL0o=
 github.com/blitz-frost/io v0.2.5/go.mod h1:h7gT4ncQ+eyYZMCnsrKfVlue5gXwZaMQ+DMXS+EaRVs=
 github.com/blitz-frost/msg v0.1.1 h1:C9fGUhBeW7BcJMBhMirWNom09QX6cwpEf0LIW7/vibI=
 github.com/blitz-frost/msg v0.1.1/go.mod h1:uQy8Tigo19XA/i/GeXC3+NtTFUzD08mdagIezoN44ec=
+github.com/blitz-frost/resource v0.1.0 h1:gfCqTFanus2DuaHUGDuqNGDEjhJH7jNTOEBNNbtoSO4=
+github.com/blitz-frost/resource v0.1.0/go.mod h1:FuHQvpOxIGwgXbacz96AIS6B2Fa17LFS0cmBYWso+gI=

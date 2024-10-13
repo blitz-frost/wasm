@@ -1,8 +1,10 @@
 package dom
 
+import "github.com/blitz-frost/wasm"
+
 // CaretMove moves caret position inside the current selection.
 func CaretMove(pos int) {
-	sel := window.Call("getSelection")
+	sel := wasm.Global.CallRaw("getSelection")
 	if sel.Get("rangeCount").Int() == 0 {
 		return
 	}
@@ -20,7 +22,7 @@ func TextInsert(str string) {
 
 // TextSelect selects text inside the current active element.
 func TextSelect(start, end int) {
-	sel := window.Call("getSelection")
+	sel := wasm.Global.CallRaw("getSelection")
 	if sel.Get("rangeCount").Int() == 0 {
 		return
 	}

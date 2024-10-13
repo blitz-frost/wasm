@@ -2,14 +2,12 @@
 package elements
 
 import (
-	"syscall/js"
-
+	"github.com/blitz-frost/wasm"
 	"github.com/blitz-frost/wasm/dom"
 	"github.com/blitz-frost/wasm/media"
 )
 
-var global = js.Global()
-var doc = global.Get("document")
+var doc = wasm.Global.Get("document")
 
 type Element = dom.Element
 
@@ -17,7 +15,7 @@ type Button struct {
 	Element
 }
 
-func MakeButton() Button {
+func ButtonMake() Button {
 	return Button{Element{doc.Call("createElement", "button")}}
 }
 
@@ -26,7 +24,7 @@ type Cell struct {
 	Element
 }
 
-func MakeCell() Cell {
+func CellMake() Cell {
 	return Cell{Element{doc.Call("createElement", "td")}}
 }
 
@@ -50,7 +48,7 @@ type Checkbox struct {
 	Element
 }
 
-func MakeCheckbox() Checkbox {
+func CheckboxMake() Checkbox {
 	e := Element{doc.Call("createElement", "input")}
 	e.Call("setAttribute", "type", "checkbox")
 	return Checkbox{e}
@@ -84,7 +82,7 @@ type Div struct {
 	Element
 }
 
-func MakeDiv() Div {
+func DivMake() Div {
 	return Div{Element{doc.Call("createElement", "div")}}
 }
 
@@ -92,7 +90,7 @@ type Image struct {
 	Element
 }
 
-func MakeImage() Image {
+func ImageMake() Image {
 	return Image{Element{doc.Call("createElement", "img")}}
 }
 
@@ -108,7 +106,7 @@ type Option struct {
 	Element
 }
 
-func MakeOption(val string) Option {
+func OptionMake(val string) Option {
 	x := Option{Element{doc.Call("createElement", "option")}}
 	x.ValueSet(val)
 	return x
@@ -127,7 +125,7 @@ type Para struct {
 	Element
 }
 
-func MakePara() Para {
+func ParaMake() Para {
 	return Para{Element{doc.Call("createElement", "p")}}
 }
 
@@ -136,7 +134,7 @@ type Row struct {
 	Element
 }
 
-func MakeRow() Row {
+func RowMake() Row {
 	return Row{Element{doc.Call("createElement", "tr")}}
 }
 
@@ -180,7 +178,7 @@ type Select struct {
 	Element
 }
 
-func MakeSelect(opt ...Option) Select {
+func SelectMake(opt ...Option) Select {
 	x := Select{Element{doc.Call("createElement", "select")}}
 	x.Append(opt...)
 	return x
@@ -222,7 +220,7 @@ type Table struct {
 	Element
 }
 
-func MakeTable() Table {
+func TableMake() Table {
 	return Table{Element{doc.Call("createElement", "table")}}
 }
 
@@ -266,7 +264,7 @@ type TextArea struct {
 	Element
 }
 
-func MakeTextArea() TextArea {
+func TextAreaMake() TextArea {
 	return TextArea{Element{doc.Call("createElement", "textarea")}}
 }
 
@@ -290,7 +288,7 @@ type Video struct {
 	Element
 }
 
-func MakeVideo() Video {
+func VideoMake() Video {
 	return Video{Element{doc.Call("createElement", "video")}}
 }
 
@@ -312,12 +310,11 @@ func (x Video) MutedSet(v bool) {
 
 func (x Video) SourceStream() media.Stream {
 	v := x.Get("srcObject")
-	return media.AsStream(v)
+	return media.Stream{v}
 }
 
 func (x Video) SourceStreamSet(stream media.Stream) {
-	v := stream.Js()
-	x.Set("srcObject", v)
+	x.Set("srcObject", stream.V)
 }
 
 func (x Video) SourceUrl() string {

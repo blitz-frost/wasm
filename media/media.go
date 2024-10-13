@@ -2,7 +2,6 @@
 package media
 
 import (
-	"errors"
 	"sync"
 	"syscall/js"
 	"time"
@@ -13,49 +12,49 @@ import (
 )
 
 var (
-	media    = js.Global().Get("navigator").Get("mediaDevices")
-	recorder = js.Global().Get("MediaRecorder")
-	source   = js.Global().Get("MediaSource")
+	media    = wasm.Global.Get("navigator").Get("mediaDevices")
+	recorder = wasm.Global.Get("MediaRecorder")
+	source   = wasm.Global.Get("MediaSource")
 )
 
 const (
 	VideoInput  DeviceKind = "videoinput"
-	AudioInput             = "audioinput"
-	AudioOutput            = "audiooutput"
+	AudioInput  DeviceKind = "audioinput"
+	AudioOutput DeviceKind = "audiooutput"
 )
 
 const (
 	User        FacingMode = "user"
-	Environment            = "environment"
-	Left                   = "left"
-	Right                  = "right"
+	Environment FacingMode = "environment"
+	Left        FacingMode = "left"
+	Right       FacingMode = "right"
 )
 
 const (
 	Exact Qualifier = "exact"
-	Ideal           = "ideal"
-	Max             = "max"
-	Min             = "min"
+	Ideal Qualifier = "ideal"
+	Max   Qualifier = "max"
+	Min   Qualifier = "min"
 )
 
 const (
 	None      ResizeMode = "none"
-	CropScape            = "crop-and-scale"
+	CropScape ResizeMode = "crop-and-scale"
 )
 
 const (
 	Audio Kind = "audio"
-	Video      = "video"
+	Video Kind = "video"
 )
 
 type Buffer struct {
-	v js.Value
+	v wasm.Value
 
 	n     int        // js array length
 	array wasm.Bytes // copy to JS without repeated allocation
 }
 
-func newBuffer(v js.Value) *Buffer {
+func bufferMake(v wasm.Value) *Buffer {
 	return &Buffer{
 		v: v,
 	}
@@ -68,7 +67,7 @@ func (x *Buffer) Write(b []byte) error {
 
 	slice := x.array.Slice(0, len(b))
 	slice.CopyFrom(b)
-	x.v.Call("appendBuffer", slice.Js())
+	x.v.Call("appendBuffer", slice.Value())
 
 	return nil
 }
@@ -79,8 +78,11 @@ type Device struct {
 }
 
 // Devices returns a slice of all available devices of the specified kind.
+//
+// Must not be called from the event loop.
 func Devices(kind DeviceKind) ([]Device, error) {
-	allJs, err := wasm.Await(media.Call("enumerateDevices"))
+	p := wasm.Promise(media.Call("enumerateDevices"))
+	allJs, err := p.Await()
 	if err != nil {
 		return nil, err
 	}
@@ -110,16 +112,7 @@ type Kind string
 type Qualifier string
 
 type Recorder struct {
-	v js.Value
-
-	onArray   js.Func // should be more efficient than awaiting the onData promise
-	onData    js.Func
-	onErrorJs js.Func // onerror event listener
-
-	onError func(error) // also used for dst.Write errors
-
-	dst msg.ReaderTaker
-	buf []byte // receive recorded bytes without repeated allocation
+	v wasm.Value
 
 	active bool
 	stop   chan struct{}
@@ -127,7 +120,7 @@ type Recorder struct {
 	mux sync.Mutex
 }
 
-func NewRecorder(s Stream, t Type, audioBitRate, videoBitRate float64) *Recorder {
+func RecorderMake(s Stream, t Type, audioBitRate, videoBitRate float64) *Recorder {
 	// options
 	opts := make(map[string]any)
 	if t != nil {
@@ -140,7 +133,7 @@ func NewRecorder(s Stream, t Type, audioBitRate, videoBitRate float64) *Recorder
 		opts["videoBitsPerSecond"] = videoBitRate
 	}
 
-	args := []any{s.v}
+	args := []any{s.V}
 	if len(opts) > 0 {
 		args = append(args, opts)
 	}
@@ -148,60 +141,29 @@ func NewRecorder(s Stream, t Type, audioBitRate, videoBitRate float64) *Recorder
 	v := recorder.New(args...)
 
 	x := Recorder{
-		v:       v,
-		onError: func(error) {},
-		dst:     msg.Void{},
-		stop:    make(chan struct{}),
+		v:    v,
+		stop: make(chan struct{}),
 	}
-
-	x.onErrorJs = js.FuncOf(func(this js.Value, args []js.Value) any {
-		errJs := args[0].Get("error")
-		msg := errJs.Get("message").String()
-		err := errors.New(msg)
-		x.onError(err)
-
-		return nil
-	})
-	x.onArray = js.FuncOf(func(this js.Value, args []js.Value) any {
-		buf := wasm.View(args[0])
-
-		n := buf.Len()
-		// sometimes we get empty arrays
-		if n == 0 {
-			return nil
-		}
-		if len(x.buf) < n {
-			x.buf = make([]byte, n)
-		}
-		b := x.buf[:n]
-
-		buf.CopyTo(b)
-		if err := x.dst.ReaderTake((*io.BytesReader)(&b)); err != nil {
-			x.onError(err)
-		}
-
-		return nil
-	})
-	x.onData = js.FuncOf(func(this js.Value, args []js.Value) any {
-		data := args[0].Get("data")
-		arrayPromise := data.Call("arrayBuffer")
-		arrayPromise.Call("then", x.onArray)
-
-		return nil
-	})
-
-	v.Set("ondataavailable", x.onData)
 
 	return &x
 }
 
-func (x *Recorder) ReaderChain(dst msg.ReaderTaker) error {
-	x.dst = dst
-	return nil
+// fn - Function({"data": {"arrayBuffer": Function() Promise(ArrayBuffer)}})
+func (x *Recorder) DataHandle(fn wasm.Function) {
+	x.v.Set("ondataavailable", fn.Value())
 }
 
-func (x *Recorder) OnError(fn func(error)) {
-	x.onError = fn
+// DataInterface can be used to create Functions for the DataHandle method.
+//
+// fn - Function(ArrayBuffer)
+func (x *Recorder) DataInterface(fn wasm.Function) wasm.InterfaceFunc {
+	return func(this wasm.Value, args []wasm.Value) (wasm.Any, error) {
+		data := args[0].Get("data")
+		arrayPromise := data.Call("arrayBuffer")
+		arrayPromise.Call("then", wasm.Value(fn))
+
+		return nil, nil
+	}
 }
 
 func (x *Recorder) Pause() {
@@ -215,12 +177,6 @@ func (x *Recorder) Pause() {
 	x.stop <- struct{}{}
 
 	x.v.Call("pause")
-}
-
-func (x *Recorder) Release() {
-	x.onArray.Release()
-	x.onData.Release()
-	x.onErrorJs.Release()
 }
 
 func (x *Recorder) Resume(d time.Duration) {
@@ -282,12 +238,12 @@ type ResizeMode string
 
 // Settings defines a set of properties common to all stream types.
 type Settings struct {
-	v js.Value
+	v wasm.Value
 }
 
-func makeSettings() Settings {
-	v := js.ValueOf(map[string]any{})
-	return Settings{v}
+func settingsMake() Settings {
+	v := wasm.ObjectMake(nil)
+	return Settings{wasm.Value(v)}
 }
 
 func (x Settings) Device() (Qualifier, string) {
@@ -312,7 +268,7 @@ func (x Settings) boolGet(name string) (Qualifier, bool) {
 	case js.TypeBoolean:
 		return Exact, oJs.Bool()
 	case js.TypeObject:
-		k := wasm.Keys(oJs)
+		k := wasm.Object(oJs).Keys()
 		return Qualifier(k[0]), oJs.Get(k[0]).Bool()
 	}
 
@@ -337,7 +293,7 @@ func (x Settings) stringGet(name string) (Qualifier, string) {
 	case js.TypeString:
 		return Exact, oJs.String()
 	case js.TypeObject:
-		k := wasm.Keys(oJs)
+		k := wasm.Object(oJs).Keys()
 		return Qualifier(k[0]), oJs.Get(k[0]).String()
 	}
 
@@ -357,100 +313,108 @@ func (x Settings) uintSet(name string, v Uint) {
 }
 
 type Source struct {
-	v js.Value
+	v wasm.Value
 
-	onClose js.Func
-	onEnd   js.Func
-	onOpen  js.Func
+	closeFn wasm.DynamicFunction
+	endFn   wasm.DynamicFunction
+	openFn  wasm.DynamicFunction
 }
 
-func NewSource() *Source {
+func SourceMake() *Source {
 	v := source.New()
-
 	return &Source{
 		v: v,
 	}
 }
 
-func (x *Source) NewBuffer(t Type) *Buffer {
+func (x *Source) Buffer(t Type) *Buffer {
 	s := typeString(t)
 	v := x.v.Call("addSourceBuffer", s)
-	return newBuffer(v)
+	return bufferMake(v)
 }
 
-func (x *Source) OnClose(fn func()) {
-	x.onClose.Release()
-	x.onClose = js.FuncOf(func(this js.Value, args []js.Value) any {
+func (x *Source) CloseHandle(fn func()) {
+	inter := func(wasm.Value, []wasm.Value) (wasm.Any, error) {
 		fn()
-		return nil
-	})
-	x.v.Set("onsourceclose", x.onClose)
+		return nil, nil
+	}
+	x.closeFn.Remake(wasm.InterfaceFunc(inter))
+
+	x.v.Set("onsourceclose", x.closeFn.Value())
 }
 
-func (x *Source) OnEnd(fn func()) {
-	x.onEnd.Release()
-	x.onEnd = js.FuncOf(func(this js.Value, args []js.Value) any {
+func (x *Source) EndHandle(fn func()) {
+	inter := func(wasm.Value, []wasm.Value) (wasm.Any, error) {
 		fn()
-		return nil
-	})
-	x.v.Set("onsourceended", x.onEnd)
+		return nil, nil
+	}
+	x.endFn.Remake(wasm.InterfaceFunc(inter))
+
+	x.v.Set("onsourceend", x.endFn.Value())
 }
 
-func (x *Source) OnOpen(fn func()) {
-	x.onOpen.Release()
-	x.onOpen = js.FuncOf(func(this js.Value, args []js.Value) any {
+func (x *Source) OpenHandle(fn func()) {
+	inter := func(wasm.Value, []wasm.Value) (wasm.Any, error) {
 		fn()
-		return nil
-	})
-	x.v.Set("onsourceopen", x.onOpen)
-}
+		return nil, nil
+	}
+	x.openFn.Remake(wasm.InterfaceFunc(inter))
 
-func (x *Source) Release() {
-	x.onClose.Release()
-	x.onEnd.Release()
-	x.onOpen.Release()
+	x.v.Set("onsourceopen", x.openFn.Value())
 }
 
 // Url returns a browser URL to the Source object.
 func (x *Source) Url() string {
-	return js.Global().Get("URL").Call("createObjectURL", x.v).String()
+	return wasm.Global.Get("URL").Call("createObjectURL", x.v).String()
+}
+
+func (x *Source) Wipe() {
+	x.closeFn.Wipe()
+	x.endFn.Wipe()
+	x.openFn.Wipe()
 }
 
 type Stream struct {
-	v js.Value
-}
-
-func AsStream(v js.Value) Stream {
-	return Stream{v}
-}
-
-func (x Stream) Js() js.Value {
-	return x.v
+	V wasm.Value
 }
 
 func (x Stream) VideoTracks() []VideoTrack {
-	oJs := x.v.Call("getVideoTracks")
+	oJs := x.V.Call("getVideoTracks")
 	o := make([]VideoTrack, oJs.Length())
 	for i := range o {
-		o[i] = VideoTrack{oJs.Index(i)}
+		o[i].Track = &Track{
+			V: oJs.Index(i),
+		}
 	}
 	return o
 }
 
 type Track struct {
-	v js.Value
+	V wasm.Value
+
+	endFn wasm.DynamicFunction
 }
 
-func AsTrack(v js.Value) Track {
-	return Track{v}
+func (x *Track) EndHandle(fn func()) {
+	inter := func(wasm.Value, []wasm.Value) (wasm.Any, error) {
+		fn()
+		return nil, nil
+	}
+	x.endFn.Remake(wasm.InterfaceFunc(inter))
+
+	x.V.Set("onended", x.endFn.Value())
 }
 
-func (x Track) Kind() Kind {
-	return Kind(x.v.Get("kind").String())
+func (x *Track) Kind() Kind {
+	return Kind(x.V.Get("kind").String())
 }
 
-func (x Track) Js() js.Value {
-	return x.v
+func (x *Track) Stop() {
+	x.V.Call("stop")
+}
+
+func (x *Track) Wipe() {
+	x.endFn.Wipe()
 }
 
 type Type interface {
@@ -465,8 +429,8 @@ type VideoSettings struct {
 	Settings
 }
 
-func MakeVideoSettings() VideoSettings {
-	return VideoSettings{makeSettings()}
+func VideoSettingsMake() VideoSettings {
+	return VideoSettings{settingsMake()}
 }
 
 func (x VideoSettings) AspectRatio() Float {
@@ -521,20 +485,24 @@ func (x VideoSettings) WidthSet(u Uint) {
 	x.uintSet("width", u)
 }
 
-type VideoTrack Track
+type VideoTrack struct {
+	*Track
+}
 
+// Must not be called from the event loop.
 func (x VideoTrack) Apply(vs VideoSettings) error {
-	_, err := wasm.Await(x.v.Call("applyConstraints", vs.v))
+	p := wasm.Promise(x.V.Call("applyConstraints", vs.v))
+	_, err := p.Await()
 	return err
 }
 
 func (x VideoTrack) Capabilities() VideoSettings {
-	v := x.v.Call("getCapabilities")
+	v := x.V.Call("getCapabilities")
 	return VideoSettings{Settings{v}}
 }
 
 func (x VideoTrack) Settings() VideoSettings {
-	v := x.v.Call("getSettings")
+	v := x.V.Call("getSettings")
 	return VideoSettings{Settings{v}}
 }
 
@@ -546,11 +514,15 @@ type single interface {
 	bool | string
 }
 
+// Get returns a camera video stream.
+//
 // If a setting is a zero value, it will be ignored. Unmodified settings obtained from a respective make function is equivalent to requesting any stream of that kind.
+//
+// Must not be called from the event loop.
 func Get(video VideoSettings) (Stream, error) {
 	con := make(map[string]any)
 	if !video.v.IsUndefined() {
-		k := wasm.Keys(video.v)
+		k := wasm.Object(video.v).Keys()
 		if len(k) == 0 {
 			con["video"] = true
 		} else {
@@ -558,8 +530,56 @@ func Get(video VideoSettings) (Stream, error) {
 		}
 	}
 
-	val, err := wasm.Await(media.Call("getUserMedia", con))
+	p := wasm.Promise(media.Call("getUserMedia", con))
+	val, err := p.Await()
 	return Stream{val}, err
+}
+
+// GetDisplay returns a display screen stream.
+//
+// Must not be called from the event loop.
+func GetDisplay() (Stream, error) {
+	// TODO the call can have an object argument
+
+	p := wasm.Promise(media.Call("getDisplayMedia"))
+	v, err := p.Await()
+	return Stream{v}, err
+}
+
+type arrayBufferInterface struct {
+	b   []byte
+	dst msg.ReaderTaker
+
+	errorFunc func(error)
+}
+
+// An ArrayBufferInterface can be used to create Function(ArrayBuffer) that transfer data to a destination.
+func ArrayBufferInterfaceMake(dst msg.ReaderTaker, errorFunc func(error)) wasm.Interface {
+	return &arrayBufferInterface{
+		dst:       dst,
+		errorFunc: errorFunc,
+	}
+}
+
+func (x *arrayBufferInterface) Exec(this wasm.Value, args []wasm.Value) (wasm.Any, error) {
+	buf := wasm.View(args[0])
+
+	n := buf.Len()
+	// sometimes we get empty arrays
+	if n == 0 {
+		return nil, nil
+	}
+	if len(x.b) < n {
+		x.b = make([]byte, n)
+	}
+	b := x.b[:n]
+
+	buf.CopyTo(b)
+	if err := x.dst.ReaderTake((*io.BytesReader)(&b)); err != nil {
+		x.errorFunc(err)
+	}
+
+	return nil, nil
 }
 
 func numberGet[T number](x js.Value, name string) map[Qualifier]T {
@@ -570,7 +590,7 @@ func numberGet[T number](x js.Value, name string) map[Qualifier]T {
 	case js.TypeNumber:
 		o[Exact] = T(oJs.Float())
 	case js.TypeObject:
-		k := wasm.Keys(oJs)
+		k := wasm.Object(oJs).Keys()
 		for _, key := range k {
 			o[Qualifier(key)] = T(oJs.Get(key).Float())
 		}
