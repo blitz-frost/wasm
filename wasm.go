@@ -1,25 +1,40 @@
 package wasm
 
 import (
-	"errors"
 	"sync"
 	"time"
 
 	"syscall/js"
 
+	"github.com/blitz-frost/errors"
 	"github.com/blitz-frost/io"
 	"github.com/blitz-frost/resource"
 )
 
 var Global = Object(js.Global())
 
-var (
-	array   = Global.Get("Uint8Array")
-	console = Global.Get("console")
-)
-
 // Any is used for documentation purposes, to clarify that it refers to a type handled by [js.ValueOf].
 type Any = any
+
+var array = Global.Get("Array")
+
+type Array Value
+
+func ArrayMake(length int) Array {
+	return Array(array.New(length))
+}
+
+func (x Array) Index(i int) Value {
+	return Value(x).Index(i)
+}
+
+func (x Array) IndexSet(i int, v any) {
+	Value(x).SetIndex(i, v)
+}
+
+func (x Array) Length() int {
+	return Value(x).Length()
+}
 
 // An AsyncInterface can be used with "goAsync" to execute Go code asynchronously.
 // The underlying Interface will be executed in its own goroutine, and its return values will be used to resolve or reject the corresponding promise.
@@ -43,6 +58,8 @@ func (x AsyncInterface) Exec(this Value, args []Value) (Any, error) {
 	return nil, nil
 }
 
+var bytes = Global.Get("Uint8Array")
+
 // Bytes mimics []byte using a JS Uint8Array as the underlying array.
 type Bytes struct {
 	v        Value
@@ -57,12 +74,12 @@ func BytesOf(b []byte) Bytes {
 }
 
 func BytesMake(length, capacity int) Bytes {
-	v := array.New(capacity)
+	v := bytes.New(capacity)
 	return Bytes{v, length, capacity}
 }
 
 func View(arrayBuffer Value) Bytes {
-	v := array.New(arrayBuffer)
+	v := bytes.New(arrayBuffer)
 	n := v.Length()
 	return Bytes{v, n, n}
 }
@@ -78,7 +95,7 @@ func (x Bytes) Append(b []byte) Bytes {
 	}
 
 	// not enough room; allocate new array and copy everything into it
-	v := array.New(length)
+	v := bytes.New(length)
 	v.Call("set", x.v)
 
 	sub := v.Call("subarray", x.length)
@@ -124,10 +141,6 @@ type BytesReader struct {
 	Src Bytes
 }
 
-func (x *BytesReader) Close() error {
-	return nil
-}
-
 func (x *BytesReader) Read(b []byte) (int, error) {
 	n := x.Src.CopyTo(b)
 	x.Src = x.Src.Slice(n, x.Src.Len())
@@ -141,10 +154,6 @@ func (x *BytesReader) Read(b []byte) (int, error) {
 // [Dst] must be a valid Bytes value. It may be freely retrieved or exchanged when done writing to the current value.
 type BytesWriter struct {
 	Dst Bytes
-}
-
-func (x *BytesWriter) Close() error {
-	return nil
 }
 
 func (x *BytesWriter) Write(b []byte) (int, error) {
@@ -436,7 +445,7 @@ func (x Promise) Await() (Value, error) {
 	} else {
 		msg = res.value.Get("message").String()
 	}
-	return Value{}, errors.New(msg)
+	return Value{}, errors.Simple(msg)
 }
 
 func promiseAwait(this Value, args []Value) (Any, error) {
@@ -572,6 +581,8 @@ func New(class Value, args ...Any) (Value, error) {
 	return catch(r)
 }
 
+var console = Global.Get("console")
+
 // Print uses the console.log function to print JS values.
 func Print(v Value) {
 	console.Call("log", v)
@@ -597,7 +608,7 @@ func errorFrom(v Value) error {
 	errStr := v.Get("name").String()
 	errStr += ": " + v.Get("message").String()
 
-	return errors.New(errStr)
+	return errors.Simple(errStr)
 }
 
 var jsErrors = Global.Get("Error")

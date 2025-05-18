@@ -1,9 +1,9 @@
 package dom
 
 import (
-	"errors"
 	"net/url"
 
+	"github.com/blitz-frost/errors"
 	"github.com/blitz-frost/wasm"
 )
 
@@ -17,7 +17,7 @@ var (
 func ElementById(id string) (Element, error) {
 	elem := doc.CallRaw("getElementById", id)
 	if elem.IsNull() {
-		return Element{}, errors.New(id + " not found")
+		return Element{}, errors.Simple(id + " not found")
 	}
 	return Element{elem}, nil
 }

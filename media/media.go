@@ -6,7 +6,7 @@ import (
 	"syscall/js"
 	"time"
 
-	"github.com/blitz-frost/io"
+	"github.com/blitz-frost/bytes"
 	"github.com/blitz-frost/io/msg"
 	"github.com/blitz-frost/wasm"
 )
@@ -378,6 +378,10 @@ type Stream struct {
 	V wasm.Value
 }
 
+func (x Stream) Id() string {
+	return x.V.Get("id").String()
+}
+
 func (x Stream) VideoTracks() []VideoTrack {
 	oJs := x.V.Call("getVideoTracks")
 	o := make([]VideoTrack, oJs.Length())
@@ -393,6 +397,18 @@ type Track struct {
 	V wasm.Value
 
 	endFn wasm.DynamicFunction
+}
+
+func (x *Track) Enabled() bool {
+	return x.V.Get("enabled").Bool()
+}
+
+func (x *Track) EnabledSet(v bool) {
+	x.V.Set("enabled", v)
+}
+
+func (x *Track) Id() string {
+	return x.V.Get("id").String()
 }
 
 func (x *Track) EndHandle(fn func()) {
@@ -548,13 +564,13 @@ func GetDisplay() (Stream, error) {
 
 type arrayBufferInterface struct {
 	b   []byte
-	dst msg.ReaderTaker
+	dst msg.InputTaker
 
 	errorFunc func(error)
 }
 
 // An ArrayBufferInterface can be used to create Function(ArrayBuffer) that transfer data to a destination.
-func ArrayBufferInterfaceMake(dst msg.ReaderTaker, errorFunc func(error)) wasm.Interface {
+func ArrayBufferInterfaceMake(dst msg.InputTaker, errorFunc func(error)) wasm.Interface {
 	return &arrayBufferInterface{
 		dst:       dst,
 		errorFunc: errorFunc,
@@ -575,7 +591,15 @@ func (x *arrayBufferInterface) Exec(this wasm.Value, args []wasm.Value) (wasm.An
 	b := x.b[:n]
 
 	buf.CopyTo(b)
-	if err := x.dst.ReaderTake((*io.BytesReader)(&b)); err != nil {
+
+	r := (*bytes.Reader)(&b)
+	in := msg.Input{
+		Read: r.Read,
+		Close: func() error {
+			return nil
+		},
+	}
+	if err := x.dst(in); err != nil {
 		x.errorFunc(err)
 	}
 
