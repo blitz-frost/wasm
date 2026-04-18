@@ -141,13 +141,13 @@ type BytesReader struct {
 	Src Bytes
 }
 
-func (x *BytesReader) Read(b []byte) (int, error) {
+func (x *BytesReader) Read(b []byte) *io.Error {
 	n := x.Src.CopyTo(b)
 	x.Src = x.Src.Slice(n, x.Src.Len())
 	if n < len(b) {
-		return n, io.EOF
+		return &io.Error{n, io.EOF}
 	}
-	return n, nil
+	return nil
 }
 
 // BytesWriter wraps a Bytes object to function as an [io.Writer].
@@ -156,9 +156,9 @@ type BytesWriter struct {
 	Dst Bytes
 }
 
-func (x *BytesWriter) Write(b []byte) (int, error) {
+func (x *BytesWriter) Write(b []byte) *io.Error {
 	x.Dst = x.Dst.Append(b)
-	return len(b), nil
+	return nil
 }
 
 var dynamic = Export(InterfaceFunc(dynamicExec))
