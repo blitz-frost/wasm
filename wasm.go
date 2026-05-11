@@ -20,6 +20,11 @@ var array = Global.Get("Array")
 
 type Array Value
 
+func ArrayAssert(v Value) (Array, bool) {
+	ok := array.Call("isArray", v).Bool()
+	return Array(v), ok
+}
+
 func ArrayMake(length int) Array {
 	return Array(array.New(length))
 }
