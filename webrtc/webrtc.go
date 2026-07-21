@@ -543,8 +543,7 @@ func (x IceCandidateInfo) MediaLineIndex() int {
 
 func (x IceCandidateInfo) MediaLineIndexSet(v int) {
 	var vv wasm.Any
-	if v < 0 {
-		// negative values are invalid, since this is supposed to be a 0-based index
+	if v >= 0 {
 		vv = v
 	}
 	x.v.Set("sdpMLineIndex", vv)
