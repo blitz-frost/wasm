@@ -310,7 +310,7 @@ func (x Video) MutedSet(v bool) {
 
 func (x Video) SourceStream() media.Stream {
 	v := x.Get("srcObject")
-	return media.Stream{v}
+	return media.Stream{wasm.Object(v)}
 }
 
 func (x Video) SourceStreamSet(stream media.Stream) {
