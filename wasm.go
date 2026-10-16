@@ -456,6 +456,10 @@ func (x Object) Set(key string, value Any) {
 	Value(x).Set(key, value)
 }
 
+func (x Object) Value() Value {
+	return Value(x)
+}
+
 var promise = ClassGet("Promise")
 
 // In documentation "Promise(T)" can be used to describe a Promise that resolves to a value of type T.

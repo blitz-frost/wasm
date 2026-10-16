@@ -1,6 +1,13 @@
-package dom
+package window
 
-import "github.com/blitz-frost/wasm"
+import (
+	"net/url"
+
+	"github.com/blitz-frost/wasm"
+	"github.com/blitz-frost/wasm/html"
+)
+
+var location = wasm.Object(wasm.Global.Get("location"))
 
 // CaretMove moves caret position inside the current selection.
 func CaretMove(pos int) {
@@ -15,9 +22,19 @@ func CaretMove(pos int) {
 	rng.Call("setStart", node, pos)
 }
 
-// TextInsert inserts the given string at the current cursor position.
-func TextInsert(str string) {
-	doc.Call("execCommand", "insertText", false, str)
+func Handle(event html.EventName, h html.HandlerFunction) {
+	wasm.Global.CallRaw("addEventListener", string(event), wasm.Value(h))
+}
+
+func HandleRemove(event html.EventName, h html.HandlerFunction) {
+	wasm.Global.CallRaw("removeEventListener", string(event), wasm.Value(h))
+}
+
+// Url returns the current navigation URL.
+func Url() url.URL {
+	s := location.Get("href").String()
+	u, _ := url.Parse(s)
+	return *u
 }
 
 // TextSelect selects text inside the current active element.

@@ -3,33 +3,37 @@ package elements
 
 import (
 	"github.com/blitz-frost/wasm"
-	"github.com/blitz-frost/wasm/dom"
+	"github.com/blitz-frost/wasm/html"
+	"github.com/blitz-frost/wasm/html/document"
 	"github.com/blitz-frost/wasm/media"
 )
 
-var doc = wasm.Global.Get("document")
-
-type Element = dom.Element
-
 type Button struct {
-	Element
+	html.Element
 }
 
 func ButtonMake() Button {
-	return Button{Element{doc.Call("createElement", "button")}}
+	v := document.ElementCreate("button")
+	return Button{v}
 }
 
 // A Cell wraps a DOM td
 type Cell struct {
-	Element
+	html.Element
 }
 
 func CellMake() Cell {
-	return Cell{Element{doc.Call("createElement", "td")}}
+	v := document.ElementCreate("td")
+	return Cell{v}
 }
 
 func (x Cell) Index() int {
-	return x.Get("cellIndex").Int()
+	v := x.Get("cellIndex")
+	return v.Int()
+}
+
+func (x Cell) InsertSelf(cell Cell) {
+	x.Element.InsertSelf(cell.Element)
 }
 
 func (x Cell) SpanColSet(n int) {
@@ -41,21 +45,23 @@ func (x Cell) SpanRowSet(n int) {
 }
 
 func (x Cell) Row() Row {
-	return Row{Element{x.Get("parentElement")}}
+	v := x.Parent()
+	return Row{v}
 }
 
 type Checkbox struct {
-	Element
+	html.Element
 }
 
 func CheckboxMake() Checkbox {
-	e := Element{doc.Call("createElement", "input")}
-	e.Call("setAttribute", "type", "checkbox")
-	return Checkbox{e}
+	v := document.ElementCreate("input")
+	v.AttributeSet("type", "checkbox")
+	return Checkbox{v}
 }
 
 func (x Checkbox) Checked() bool {
-	return x.Get("checked").Bool()
+	v := x.Get("checked")
+	return v.Bool()
 }
 
 func (x Checkbox) CheckedSet(v bool) {
@@ -63,7 +69,8 @@ func (x Checkbox) CheckedSet(v bool) {
 }
 
 func (x Checkbox) Default() bool {
-	return x.Get("defaultChecked").Bool()
+	v := x.Get("defaultChecked")
+	return v.Bool()
 }
 
 func (x Checkbox) DefaultSet(v bool) {
@@ -79,41 +86,44 @@ func (x Checkbox) ExplicitSet(v bool) {
 }
 
 type Div struct {
-	Element
+	html.Element
 }
 
 func DivMake() Div {
-	return Div{Element{doc.Call("createElement", "div")}}
+	v := document.ElementCreate("div")
+	return Div{v}
 }
 
 type Image struct {
-	Element
+	html.Element
 }
 
 func ImageMake() Image {
-	return Image{Element{doc.Call("createElement", "img")}}
+	v := document.ElementCreate("img")
+	return Image{v}
 }
 
-func (x Image) Src() string {
-	return x.Call("getAttribute", "src").String()
+func (x Image) Src() (string, bool) {
+	return x.Attribute("src")
 }
 
 func (x Image) SrcSet(s string) {
-	x.Call("setAttribute", "src", s)
+	x.AttributeSet("src", s)
 }
 
 type Option struct {
-	Element
+	html.Element
 }
 
 func OptionMake(val string) Option {
-	x := Option{Element{doc.Call("createElement", "option")}}
+	v := document.ElementCreate("option")
+	x := Option{v}
 	x.ValueSet(val)
 	return x
 }
 
 func (x Option) Value() string {
-	return x.Element.Get("value").String()
+	return x.Get("value").String()
 }
 
 func (x Option) ValueSet(val string) {
@@ -122,42 +132,35 @@ func (x Option) ValueSet(val string) {
 }
 
 type Para struct {
-	Element
+	html.Element
 }
 
 func ParaMake() Para {
-	return Para{Element{doc.Call("createElement", "p")}}
+	v := document.ElementCreate("p")
+	return Para{v}
 }
 
 // A Row wraps a DOM tr
 type Row struct {
-	Element
+	html.Element
 }
 
 func RowMake() Row {
-	return Row{Element{doc.Call("createElement", "tr")}}
+	v := document.ElementCreate("tr")
+	return Row{v}
 }
 
-func (x Row) Add(pos int, cell ...Cell) {
-	jsCell := x.Get("cells").Index(pos)
-	for _, c := range cell {
-		x.Call("insertBefore", c.Element.Value, jsCell)
-	}
+func (x Row) Append(cell Cell) {
+	x.Element.Append(cell.Element)
 }
 
-func (x Row) Append(cell ...Cell) {
-	for _, c := range cell {
-		x.Call("appendChild", c.Element.Value)
-	}
-}
-
-// Cell returns the row's i-th cell, starting at 0.
-func (x Row) Cell(i int) Cell {
-	return Cell{Element{x.Get("cells").Index(i)}}
+func (x Row) Cells() html.Collection {
+	v := x.Get("cells")
+	return html.Collection{wasm.Object(v)}
 }
 
 func (x Row) Delete(i int) {
-	x.Call("deleteCell", i)
+	x.CallRaw("deleteCell", i)
 }
 
 // Index returns the row's position in the table that contains it.
@@ -165,40 +168,44 @@ func (x Row) Index() int {
 	return x.Get("rowIndex").Int()
 }
 
-// Len returns the row's number of cells.
-func (x Row) Len() int {
-	return x.Get("cells").Length()
+func (x Row) InsertSelf(row Row) {
+	x.Element.InsertSelf(row.Element)
 }
 
 func (x Row) Table() Table {
-	return Table{Element{x.Get("parentElement")}}
+	v := x.Parent()
+	return Table{v}
 }
 
 type Select struct {
-	Element
+	html.Element
 }
 
 func SelectMake(opt ...Option) Select {
-	x := Select{Element{doc.Call("createElement", "select")}}
-	x.Append(opt...)
+	v := document.ElementCreate("select")
+	x := Select{v}
+	for _, option := range opt {
+		x.Append(option)
+	}
 	return x
 }
 
-func (x Select) Add(pos int, opt ...Option) {
-	for i, op := range opt {
-		x.Call("add", op.Element.Value, pos+i)
-	}
-}
-
-func (x Select) Append(opt ...Option) {
-	for _, op := range opt {
-		x.Call("add", op.Element.Value)
-	}
-}
-
-// IndexSet sets the currently active option.
-func (x Select) IndexSet(i int) {
+// Activate sets the currently active option.
+func (x Select) Activate(i int) {
 	x.Set("selectedIndex", i)
+}
+
+func (x Select) Add(pos int, opt Option) {
+	x.CallRaw("add", opt.Value(), pos)
+}
+
+func (x Select) Append(opt Option) {
+	x.CallRaw("add", opt.Value())
+}
+
+func (x Select) Options() html.Collection {
+	v := x.Get("options")
+	return html.Collection{wasm.Object(v)}
 }
 
 // Get returns the value of the currently selected option.
@@ -212,37 +219,17 @@ func (x Select) ValueSet(val string) {
 	x.Set("value", val)
 }
 
-func (x Select) Len() int {
-	return x.Element.Get("options").Length()
-}
-
 type Table struct {
-	Element
+	html.Element
 }
 
 func TableMake() Table {
-	return Table{Element{doc.Call("createElement", "table")}}
+	v := document.ElementCreate("table")
+	return Table{v}
 }
 
-func (x Table) Add(i int, row ...Row) {
-	jsRow := x.Get("rows").Index(i)
-	for _, r := range row {
-		x.Call("insertBefore", r.Element.Value, jsRow)
-	}
-}
-
-func (x Table) Append(row ...Row) {
-	for _, r := range row {
-		x.Call("appendChild", r.Element.Value)
-	}
-}
-
-// Clear deletes all rows from the table.
-func (x Table) Clear() {
-	n := x.Len()
-	for i := 0; i < n; i++ {
-		x.Call("deleteRow", -1)
-	}
+func (x Table) Append(row Row) {
+	x.Element.Append(row.Element)
 }
 
 // Delete removes the specified row from the table.
@@ -250,22 +237,18 @@ func (x Table) Delete(i int) {
 	x.Call("deleteRow", i)
 }
 
-// Len returns the table's number of rows.
-func (x Table) Len() int {
-	return x.Get("rows").Length()
-}
-
-// Row returns the table's ith row, starting at 0.
-func (x Table) Row(i int) Row {
-	return Row{Element{x.Get("rows").Index(i)}}
+func (x Table) Rows() html.Collection {
+	v := x.Get("rows")
+	return html.Collection{wasm.Object(v)}
 }
 
 type TextArea struct {
-	Element
+	html.Element
 }
 
 func TextAreaMake() TextArea {
-	return TextArea{Element{doc.Call("createElement", "textarea")}}
+	v := document.ElementCreate("textarea")
+	return TextArea{v}
 }
 
 func (x TextArea) PlaceholderSet(s string) {
@@ -285,11 +268,12 @@ func (x TextArea) TextSet(s string) {
 }
 
 type Video struct {
-	Element
+	html.Element
 }
 
 func VideoMake() Video {
-	return Video{Element{doc.Call("createElement", "video")}}
+	v := document.ElementCreate("video")
+	return Video{v}
 }
 
 func (x Video) AutoPlay() bool {

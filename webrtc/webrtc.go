@@ -18,11 +18,12 @@ type BundlePolicy string
 type Channel struct {
 	V wasm.Object
 
-	_close     func()
-	_closeFn   wasm.DynamicFunction
-	_errorFn   wasm.DynamicFunction
-	_messageFn wasm.DynamicFunction
-	_openFn    wasm.DynamicFunction
+	_bufferedLowFn wasm.DynamicFunction
+	_close         func()
+	_closeFn       wasm.DynamicFunction
+	_errorFn       wasm.DynamicFunction
+	_messageFn     wasm.DynamicFunction
+	_openFn        wasm.DynamicFunction
 }
 
 func channelMake(v wasm.Object) *Channel {
@@ -35,6 +36,7 @@ func channelMake(v wasm.Object) *Channel {
 			x._close()
 		}
 
+		x._bufferedLowFn.Wipe()
 		x._closeFn.Wipe()
 		x._errorFn.Wipe()
 		x._messageFn.Wipe()
@@ -46,6 +48,25 @@ func channelMake(v wasm.Object) *Channel {
 	x.V.Set("onclose", x._closeFn.Value())
 
 	return &x
+}
+
+func (x *Channel) Buffered() int {
+	v := x.V.Get("bufferedAmount")
+	return v.Int()
+}
+
+func (x *Channel) BufferedLowHandle(h func()) {
+	exec := func(this wasm.Value, args []wasm.Value) (wasm.Any, error) {
+		h()
+		return nil, nil
+	}
+	x._bufferedLowFn.Remake(exec)
+
+	x.V.Set("onbufferedamountlow", x._bufferedLowFn.Value())
+}
+
+func (x *Channel) BufferedLowThresholdSet(v int) {
+	x.V.Set("bufferedAmountLowThreshold", v)
 }
 
 // This begins an asynchronous closing process, and returns immediately.

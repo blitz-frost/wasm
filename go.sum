@@ -1,11 +1,15 @@
 github.com/blitz-frost/bytes v0.2.1 h1:TzKe59CvSjld3yrJDVrO1sKG2hDSo43JP/oA13el8h0=
 github.com/blitz-frost/bytes v0.2.1/go.mod h1:F80Swg/HeBpB5oOY/zS6uAqb10dD3k6uxj3+2jLwHMo=
-github.com/blitz-frost/conv v0.3.1 h1:AhDMpdNAsYQncaC2NohgTA0JfKJHJK4Q0SPyC4C9gGQ=
-github.com/blitz-frost/conv v0.3.1/go.mod h1:YWqYF2Eu7/d0FN19gwAJN8Smi36D8dBrJTKQTasa2rQ=
+github.com/blitz-frost/bytes v0.2.2 h1:pPJ6a0UkzBQ9Aee2Vuq5f42ymW20gj7KXTN3Fnv3/3I=
+github.com/blitz-frost/bytes v0.2.2/go.mod h1:P9YGTkop6hDIjD58i+MwVJXeVjMVGskowJYtaFCxPvQ=
 github.com/blitz-frost/errors v0.1.1 h1:Gq4cumFjTkDRP6LdhMJ9vasYTiUDaP8ns2oYg40/Uss=
 github.com/blitz-frost/errors v0.1.1/go.mod h1:gcHFTPpSWeRfbEB+2GkRzMhwn/VfT1BYGBdqrig5uP0=
+github.com/blitz-frost/errors v0.1.2 h1:gZniPNS0GEUlIkdir634Y+pmE+pOTIgYaq6GMpDuG4g=
+github.com/blitz-frost/errors v0.1.2/go.mod h1:OSlfms8Xn0OpSQVWeC+fEvuUHsDcQKoOQ98bL23JrRY=
 github.com/blitz-frost/io v0.3.1 h1:0bMv0fFBeSF6omhp0haqljE2k/f0TmcHEce20vRgphQ=
 github.com/blitz-frost/io v0.3.1/go.mod h1:MNfy11ySZjvENrO8CNtGTwCf3CfcGb97LYd9RhUPY+0=
+github.com/blitz-frost/io v0.3.2 h1:YjiacLcJDuErNRQhxGItGihqYdV62xSDJlSKodZFR9M=
+github.com/blitz-frost/io v0.3.2/go.mod h1:9q12p1stdUH5I/Ke780cdRt7HVek+BCHnM+ieA3510E=
 github.com/blitz-frost/msg v0.2.0 h1:wandKzWWbwy7urkzSezmfOleGxFl3gRa10bMzZE4gek=
 github.com/blitz-frost/msg v0.2.0/go.mod h1:uQy8Tigo19XA/i/GeXC3+NtTFUzD08mdagIezoN44ec=
 github.com/blitz-frost/resource v0.1.0 h1:gfCqTFanus2DuaHUGDuqNGDEjhJH7jNTOEBNNbtoSO4=
