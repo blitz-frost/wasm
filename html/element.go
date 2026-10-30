@@ -169,15 +169,19 @@ func (x Element) TabIndexSet(i int) {
 	x.Set("tabIndex", i)
 }
 
-// Text returns the inner HTML text node value. Panics if x does not contain a text node.
+// Text returns the text content of the element.
 func (x Element) Text() string {
-	v := x.Get("innerHTML")
+	v := x.Get("textContent")
 	return v.String()
 }
 
-// TextSet sets the inner HTML of x as a text node with the provided value.
+func (x Element) TextInsert(s string, pos InsertPosition) {
+	x.CallRaw("insertAdjacentText", string(pos), s)
+}
+
+// TextSet replaces all children with a text node.
 func (x Element) TextSet(s string) {
-	x.Set("innerHTML", s)
+	x.Set("textContent", s)
 }
 
 func (x Element) Width() uint16 {
@@ -189,3 +193,12 @@ func (x Element) WidthVisible() uint16 {
 	v := x.Get("clientWidth")
 	return uint16(v.Int())
 }
+
+const (
+	InsertPositionBegin  InsertPosition = "afterbegin"
+	InsertPositionEnd    InsertPosition = "beforeend"
+	InsertPositionAfter  InsertPosition = "afterend"    // in parent node
+	InsertPositionBefore InsertPosition = "beforebegin" // in parent node
+)
+
+type InsertPosition string

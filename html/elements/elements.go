@@ -85,6 +85,15 @@ func (x Checkbox) ExplicitSet(v bool) {
 	x.Set("indeterminate", !v)
 }
 
+type Details struct {
+	html.Element
+}
+
+func DetailsMake() Details {
+	v := document.ElementCreate("details")
+	return Details{v}
+}
+
 type Div struct {
 	html.Element
 }
@@ -92,6 +101,60 @@ type Div struct {
 func DivMake() Div {
 	v := document.ElementCreate("div")
 	return Div{v}
+}
+
+type Heading1 struct {
+	html.Element
+}
+
+func Heading1Make() Heading1 {
+	v := document.ElementCreate("h1")
+	return Heading1{v}
+}
+
+type Heading2 struct {
+	html.Element
+}
+
+func Heading2Make() Heading2 {
+	v := document.ElementCreate("h2")
+	return Heading2{v}
+}
+
+type Heading3 struct {
+	html.Element
+}
+
+func Heading3Make() Heading3 {
+	v := document.ElementCreate("h3")
+	return Heading3{v}
+}
+
+type Heading4 struct {
+	html.Element
+}
+
+func Heading4Make() Heading4 {
+	v := document.ElementCreate("h4")
+	return Heading4{v}
+}
+
+type Heading5 struct {
+	html.Element
+}
+
+func Heading5Make() Heading5 {
+	v := document.ElementCreate("h5")
+	return Heading5{v}
+}
+
+type Heading6 struct {
+	html.Element
+}
+
+func Heading6Make() Heading6 {
+	v := document.ElementCreate("h6")
+	return Heading6{v}
 }
 
 type Image struct {
@@ -131,13 +194,13 @@ func (x Option) ValueSet(val string) {
 	x.Set("text", val)
 }
 
-type Para struct {
+type Paragraph struct {
 	html.Element
 }
 
-func ParaMake() Para {
+func ParagraphMake() Paragraph {
 	v := document.ElementCreate("p")
-	return Para{v}
+	return Paragraph{v}
 }
 
 // A Row wraps a DOM tr
@@ -217,6 +280,15 @@ func (x Select) Value() string {
 // If no option has that value, the active option will be empty.
 func (x Select) ValueSet(val string) {
 	x.Set("value", val)
+}
+
+type Summary struct {
+	html.Element
+}
+
+func SummaryMake() Summary {
+	v := document.ElementCreate("summary")
+	return Summary{v}
 }
 
 type Table struct {
